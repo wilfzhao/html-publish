@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm run build:css && next dev",
-    "build:css": "tailwindcss -i ./src/app/globals.css -o ./src/app/tailwind.css",
-    "build": "npm run build:css && next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",

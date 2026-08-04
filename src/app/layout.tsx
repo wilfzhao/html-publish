@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import './tailwind.css';
+import './globals.css';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth';
 
