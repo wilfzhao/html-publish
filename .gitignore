@@ -3,6 +3,8 @@ node_modules/
 content/
 *.db
 *.db-journal
+*.db-wal
 .env.local
 .env*.local
 .DS_Store
+uploads/
