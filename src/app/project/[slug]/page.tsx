@@ -67,6 +67,7 @@ export default function ProjectDetailPage() {
     setCopied(true);
     toast.success('Link copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
+    window.open(link, '_blank');
   };
 
   if (loading) {
@@ -229,10 +230,10 @@ export default function ProjectDetailPage() {
                   }`}
                 >
                   <iframe
-                    src={latestVersion ? `/api/assets/${slug}/${latestVersion.number}` : ''}
+                    src={latestVersion ? `/api/proxy/${slug}?v=${latestVersion.number}` : ''}
                     className="w-full h-full border-0"
                     title="Prototype Preview"
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                     style={{ minHeight: '100%' }}
                   />
                 </div>

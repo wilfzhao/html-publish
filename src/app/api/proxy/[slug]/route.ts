@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { prisma } from '@/lib/db';
 
 const CONTENT_TYPES: Record<string, string> = {
   html: 'text/html', htm: 'text/html', css: 'text/css',
@@ -44,17 +44,15 @@ export async function GET(
     const versionDir = path.join(process.cwd(), 'uploads', project.id, `v${versionNum}`);
     const fullPath = path.join(versionDir, filePath);
 
-    // Security: prevent path traversal
     if (!fullPath.startsWith(versionDir)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Determine fallback entry file (prefer the version's entryFile)
-    const defaultEntry = project.versions?.[0]?.entryFile || 'index.html';
     let fileBuffer: Buffer;
     try {
       fileBuffer = await readFile(fullPath);
     } catch {
+      const defaultEntry = project.versions?.[0]?.entryFile || 'index.html';
       try {
         fileBuffer = await readFile(path.join(versionDir, defaultEntry));
       } catch {
@@ -65,17 +63,44 @@ export async function GET(
     const ext = filePath.split('.').pop()?.toLowerCase() || '';
     const contentType = CONTENT_TYPES[ext] || 'application/octet-stream';
 
-    // For HTML files, inject a base tag so relative URLs resolve to /api/assets/<slug>/path=<relative>
     if (ext === 'html' || ext === 'htm') {
       const htmlStr = fileBuffer.toString('utf-8');
-      const baseHref = `/api/assets/${slug}/?path=`;
-      let modifiedHtml = htmlStr.replace(
-        /<head(\s[^>]*)?>/,
-        `<head$1>\n<base href="${baseHref}">`
-      );
-      if (modifiedHtml !== htmlStr) {
-        fileBuffer = Buffer.from(modifiedHtml, 'utf-8');
+      const originBase = `/api/assets/${slug}`;
+
+      const proxyScript = `
+<script>
+(function() {
+  var prefix = '${originBase}';
+  document.querySelectorAll('link[href]').forEach(function(link) {
+    var href = link.getAttribute('href');
+    if (href && !href.startsWith('http') && !href.startsWith('data:') && !href.startsWith('//') && !href.startsWith('/api/assets/')) {
+      link.setAttribute('href', prefix + '/?path=' + encodeURIComponent(href));
+    }
+  });
+  document.querySelectorAll('script[src]').forEach(function(script) {
+    var src = script.getAttribute('src');
+    if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('//') && !src.startsWith('/api/assets/')) {
+      script.setAttribute('src', prefix + '/?path=' + encodeURIComponent(src));
+    }
+  });
+  document.querySelectorAll('img[src], a[href], form[action]').forEach(function(el) {
+    var attr = el.getAttribute('src') || el.getAttribute('href') || el.getAttribute('action');
+    if (attr && !attr.startsWith('http') && !attr.startsWith('data:') && !attr.startsWith('//') && !attr.startsWith('mailto:') && !attr.startsWith('javascript:') && !attr.startsWith('/api/assets/')) {
+      var name = el.tagName.toLowerCase() === 'a' ? 'href' : el.tagName.toLowerCase() === 'form' ? 'action' : 'src';
+      el.setAttribute(name, prefix + '/?path=' + encodeURIComponent(attr));
+    }
+  });
+})();
+<\/script>
+`;
+
+      let modifiedHtml = htmlStr.replace(/<head(\s[^>]*)?>/, function(match) {
+        return '<head' + match.slice(5) + proxyScript;
+      });
+      if (modifiedHtml === htmlStr) {
+        modifiedHtml = proxyScript + htmlStr;
       }
+      fileBuffer = Buffer.from(modifiedHtml, 'utf-8');
     }
 
     return new NextResponse(fileBuffer, {
@@ -89,7 +114,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Asset error:', error);
+    console.error('Proxy error:', error);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

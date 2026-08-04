@@ -23,19 +23,27 @@ export default function PublicPreviewPage() {
 
   const checkAccess = async () => {
     try {
-      // Try fetching project metadata first
+      // Check if project exists via metadata API
+      let projectExists = false;
       try {
         const metaRes = await fetch(`/api/projects?slug=${slug}`);
         if (metaRes.ok) {
           const meta = await metaRes.json();
           if (meta[0]) {
+            projectExists = true;
             setProjectName(meta[0].name);
+            // If PUBLIC and project exists, skip assets check entirely
+            if (meta[0].visibility === 'PUBLIC') {
+              setState('preview');
+              return;
+            }
           }
         }
       } catch {
         // ignore
       }
 
+      // For non-public projects, check asset access (password etc)
       const paramsStr = new URLSearchParams();
       if (version) paramsStr.set('v', version);
 
@@ -51,8 +59,12 @@ export default function PublicPreviewPage() {
         setState('error');
         setError('This link has expired');
       } else if (res.status === 404) {
-        setState('error');
-        setError('Project not found or deleted');
+        if (projectExists) {
+          setState('preview');
+        } else {
+          setState('error');
+          setError('Project not found or deleted');
+        }
       } else if (res.ok) {
         setState('preview');
       }
@@ -166,7 +178,7 @@ export default function PublicPreviewPage() {
           <span className="text-xs text-gray-500 truncate">{projectName || 'Prototype'}</span>
         </div>
         <a
-          href={`/api/assets/${slug}${version ? `?v=${version}` : ''}`}
+          href={`/api/proxy/${slug}${version ? `?v=${version}` : ''}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
@@ -181,10 +193,10 @@ export default function PublicPreviewPage() {
         <div className="min-h-full flex items-center justify-center p-4">
           <div className="bg-white shadow-lg w-full h-full max-w-5xl rounded-xl overflow-hidden">
             <iframe
-              src={`/api/assets/${slug}${version ? `?v=${version}` : ''}`}
+              src={`/api/proxy/${slug}${version ? `?v=${version}` : ''}`}
               className="w-full h-full border-0"
               title="Prototype Preview"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
               style={{ minHeight: 'calc(100vh - 60px)' }}
             />
           </div>

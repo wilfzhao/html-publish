@@ -205,12 +205,14 @@ export default function DashboardPage() {
                   {/* Hover overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => e.preventDefault()}
-                        className="bg-white/90 text-gray-900 px-4 py-2 rounded-lg text-xs font-medium shadow-sm"
+                      <a
+                        href={`/p/${project.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-white/90 text-gray-900 px-4 py-2 rounded-lg text-xs font-medium shadow-sm inline-block"
                       >
                         Open Preview
-                      </button>
+                      </a>
                     </div>
                   </div>
                   {/* Visibility badge */}
