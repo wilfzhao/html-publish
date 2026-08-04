@@ -14,13 +14,13 @@ const CONTENT_TYPES: Record<string, string> = {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params;
   try {
     const { searchParams } = new URL(req.url);
     const filePath = searchParams.get('path') || 'index.html';
     const versionStr = searchParams.get('v');
-    const slug = params.slug;
 
     const project = await prisma.project.findUnique({
       where: { slug },

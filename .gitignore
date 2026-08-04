@@ -8,3 +8,4 @@ content/
 .env*.local
 .DS_Store
 uploads/
+src/app/tailwind.css
