@@ -34,6 +34,12 @@ export async function POST(req: NextRequest) {
     });
     const nextNumber = (lastVersion?.number || 0) + 1;
 
+    // Determine uploader: prefer the first existing user (matches project creation logic)
+    const uploader = await prisma.user.findFirst();
+    if (!uploader) {
+      return NextResponse.json({ error: 'No users available' }, { status: 500 });
+    }
+
     // Save file
     const versionDir = path.join(process.cwd(), 'uploads', projectId, `v${nextNumber}`);
     if (!existsSync(versionDir)) {
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
         note: note || `Version ${nextNumber}`,
         entryFile: fileName,
         storagePath: filePath,
-        uploadedBy: 'user_demo',
+        uploadedBy: uploader.id,
       },
     });
 
