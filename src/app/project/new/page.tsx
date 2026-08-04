@@ -43,10 +43,10 @@ export default function NewProjectPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          description: description.trim() || undefined,
+          description: description.trim(),
           visibility,
           password: visibility === 'PASSWORD' ? password : undefined,
-          expireAt: expireAt || undefined,
+          // ownerId omitted — API will auto-assign first user
         }),
       });
 

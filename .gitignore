@@ -9,3 +9,4 @@ content/
 .DS_Store
 uploads/
 src/app/tailwind.css
+src/app/tailwind-generated.css

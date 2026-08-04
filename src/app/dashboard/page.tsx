@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import {
@@ -37,7 +36,6 @@ interface Project {
 }
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,12 +43,8 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<'all' | 'mine' | 'shared'>('all');
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
     fetchProjects();
-  }, [user]);
+  }, []);
 
   const fetchProjects = async () => {
     try {
@@ -89,8 +83,6 @@ export default function DashboardPage() {
     }
   };
 
-  if (!user) return null;
-
   return (
     <AppShell>
       <div className="p-6 lg:p-8">
@@ -98,7 +90,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user.name} 👋
+              ProtoHost Dashboard 👋
             </h1>
             <p className="text-sm text-gray-500 mt-1">
               {projects.length} prototype{projects.length !== 1 ? 's' : ''} deployed

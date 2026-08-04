@@ -58,10 +58,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, description, visibility, password } = body;
+    const { name, description, visibility, password, ownerId: ownerIdInput } = body;
+    let ownerId = ownerIdInput;
 
     if (!name) {
       return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
+    }
+
+    if (!ownerId) {
+      // If no owner specified, use the first existing user or fall back to demo
+      const existingUser = await prisma.user.findFirst();
+      ownerId = existingUser?.id || 'demo';
     }
 
     let slug = name.toLowerCase()
@@ -80,10 +87,10 @@ export async function POST(req: NextRequest) {
         name,
         description: description || '',
         slug,
-        visibility: visibility || 'INTERNAL',
+        visibility: visibility || 'PUBLIC',
         password: password || null,
-        ownerId: 'user_demo',
-        currentVersionId: '',
+        ownerId,
+        currentVersionId: null,
       },
     });
 

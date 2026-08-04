@@ -9,15 +9,12 @@ import {
   Star,
   Upload,
   Settings,
-  LogOut,
   Menu,
   X,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -94,30 +91,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* User section */}
+        {/* Version */}
         <div className={`p-3 border-t border-gray-100 ${sidebarOpen ? '' : 'px-2'}`}>
-          {user && (
-            <div className={`flex items-center ${sidebarOpen ? 'gap-3' : 'justify-center'}`}>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                {user.name?.[0]?.toUpperCase()}
-              </div>
-              {sidebarOpen && (
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
-                  <div className="text-xs text-gray-400 truncate">{user.email}</div>
-                </div>
-              )}
-              <button
-                onClick={logout}
-                className={`text-gray-400 hover:text-gray-600 transition-colors ${
-                  sidebarOpen ? '' : 'p-2'
-                }`}
-                title="Sign out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          <div className={`text-xs text-gray-400 ${sidebarOpen ? '' : 'text-center'}`}>
+            v1.0.0
+          </div>
         </div>
       </aside>
 

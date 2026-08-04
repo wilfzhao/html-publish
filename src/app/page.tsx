@@ -15,9 +15,9 @@ export default function Home() {
           </div>
           <span className="font-bold text-xl text-gray-900 tracking-tight">ProtoHost</span>
         </div>
-        <a href="/login">
+        <a href="/dashboard">
           <button className="btn-primary">
-            Sign In
+            Go to Dashboard
           </button>
         </a>
       </nav>
@@ -45,7 +45,7 @@ export default function Home() {
           </p>
 
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            <a href="/login">
+            <a href="/dashboard">
               <button className="btn-primary text-base px-8 py-3.5">
                 Get Started Free
                 <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -170,7 +170,7 @@ export default function Home() {
               <p className="text-indigo-200 text-lg mb-8 max-w-lg mx-auto">
                 Upload your first prototype and share it with your team in under 30 seconds.
               </p>
-              <a href="/login">
+              <a href="/dashboard">
                 <button className="bg-white text-indigo-600 px-8 py-3.5 rounded-xl font-semibold hover:bg-indigo-50 transition-colors inline-flex items-center gap-2 text-base shadow-lg">
                   Start Now — It&apos;s Free
                   <ArrowRight className="w-4 h-4" />

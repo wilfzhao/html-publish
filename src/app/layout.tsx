@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import './globals.css';
+import './tailwind-generated.css';
 import { Toaster } from 'sonner';
-import { AuthProvider } from '@/lib/auth';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,10 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          {children}
-          <Toaster position="top-right" richColors />
-        </AuthProvider>
+        {children}
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );
