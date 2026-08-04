@@ -1,0 +1,99 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String    @id @default(uuid())
+  email      String    @unique
+  name       String
+  department String?
+  role       String    @default("USER")
+  avatarUrl  String?
+  createdAt  DateTime  @default(now())
+
+  projects    Project[]
+  versions    Version[]
+  comments    Comment[]
+}
+
+model Project {
+  id               String     @id @default(uuid())
+  slug             String     @unique
+  name             String
+  description      String?
+  ownerId          String
+  owner            User       @relation(fields: [ownerId], references: [id])
+  coverImageUrl    String?
+  currentVersionId String?
+  visibility       String     @default("PUBLIC")
+  password         String?
+  allowList        String?
+  isFavorite       Boolean    @default(false)
+  accessCount      Int        @default(0)
+  mainFile         String?
+  expireAt         DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  versions    Version[]
+  comments    Comment[]
+  accessLogs  AccessLog[]
+  shareLinks  ShareLink[]
+}
+
+model Version {
+  id         String  @id @default(uuid())
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number     Int
+  note       String
+  entryFile  String
+  storagePath String
+  uploadedBy String
+  uploader   User    @relation(fields: [uploadedBy], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([projectId, number])
+}
+
+model ShareLink {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionId String?
+  token     String   @unique
+  expiresAt DateTime?
+  password  String?
+  createdAt DateTime @default(now())
+}
+
+model AccessLog {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  versionId   String?
+  visitorId   String?
+  visitorName String?
+  ip          String?
+  userAgent   String?
+  visitedAt   DateTime @default(now())
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionId  String?
+  authorId   String?
+  authorName String
+  content    String
+  x          Float?
+  y          Float?
+  creator    User?    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+}
