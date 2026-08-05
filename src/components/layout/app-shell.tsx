@@ -9,6 +9,7 @@ import {
   Star,
   Upload,
   Settings,
+  X,
 } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
