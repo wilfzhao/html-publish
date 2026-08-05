@@ -244,16 +244,6 @@ export default function ProjectDetailPage() {
                 <div className="w-px h-6 bg-gray-200" />
 
                 <button
-                  onClick={() => setShowQr(!showQr)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                    showQr ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400 hover:bg-gray-100'
-                  }`}
-                  title="QR Code"
-                >
-                  <QrCode className="w-4 h-4" />
-                </button>
-
-                <button
                   onClick={() => handleCopyLink()}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100"
                   title="Copy share link"
