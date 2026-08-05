@@ -9,8 +9,6 @@ import {
   Star,
   Upload,
   Settings,
-  Menu,
-  X,
 } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -100,17 +98,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-4 flex-shrink-0">
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex-1" />
-        </header>
-
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           {children}
