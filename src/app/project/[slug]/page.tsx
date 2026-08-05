@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/app-shell';
 import {
@@ -27,24 +27,43 @@ import { toast } from 'sonner';
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const slug = params.slug as string;
 
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'preview' | 'versions' | 'settings'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'versions' | 'settings'>(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'versions') return 'versions';
+    if (tab === 'settings') return 'settings';
+    return 'preview';
+  });
   const [copied, setCopied] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'phone'>('desktop');
   const [showQr, setShowQr] = useState(false);
 
   const fetchProject = useCallback(async () => {
     try {
-      const res = await fetch(`/api/projects?slug=${slug}`);
+      let res;
+      // Try by slug first (normal case)
+      if (slug && slug.trim() !== '') {
+        res = await fetch(`/api/projects?slug=${encodeURIComponent(slug)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data[0]) {
+            setProject(data[0]);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+      // Fallback: try by ID (slug might be empty or a UUID)
+      res = await fetch(`/api/projects?id=${encodeURIComponent(slug)}`);
       if (res.ok) {
         const data = await res.json();
         setProject(data[0] || null);
       }
     } catch {
-      // ignore
     } finally {
       setLoading(false);
     }
@@ -61,13 +80,12 @@ export default function ProjectDetailPage() {
 
   const handleCopyLink = (version?: number) => {
     const link = version
-      ? `${window.location.origin}/p/${slug}?v=${version}`
-      : `${window.location.origin}/p/${slug}`;
+      ? `${window.location.origin}/api/proxy/${slug}?v=${version}`
+      : `${window.location.origin}/api/proxy/${slug}?v=1`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success('Link copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
-    window.open(link, '_blank');
   };
 
   if (loading) {
@@ -105,6 +123,42 @@ export default function ProjectDetailPage() {
   const versionShareUrl = latestVersion
     ? `${baseUrl}/p/${slug}?v=${latestVersion.number}`
     : shareUrl;
+
+  const handleDeleteVersion = async (versionId: string, versionNumber: number) => {
+    if (!confirm(`Delete v${versionNumber}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/versions/${versionId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success(`v${versionNumber} deleted`);
+        fetchProject();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to delete version');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!project) {
+      toast.error('Project not loaded');
+      return;
+    }
+    if (!confirm(`Delete "${project.name}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Project deleted');
+        router.push('/dashboard');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to delete');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+  };
 
   return (
     <AppShell>
@@ -219,11 +273,11 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* Preview iframe */}
-              <div className="flex-1 bg-gray-50 overflow-auto flex items-center justify-center p-4">
+              <div className="flex-1 bg-gray-50 overflow-auto flex items-center justify-center p-3">
                 <div
                   className={`bg-white shadow-sm transition-all duration-300 overflow-hidden ${
                     previewDevice === 'desktop'
-                      ? 'w-full max-w-5xl h-full rounded-xl'
+                      ? 'w-full max-w-7xl h-full rounded-xl'
                       : previewDevice === 'tablet'
                       ? 'w-[768px] h-[600px] rounded-xl'
                       : 'w-[375px] h-[667px] rounded-[2rem]'
@@ -278,7 +332,7 @@ export default function ProjectDetailPage() {
               <div className="max-w-3xl mx-auto">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-semibold text-gray-900">Version History</h2>
-                  <Link href="/project/new">
+                  <Link href={`/project/new?projectId=${project.id}`}>
                     <button className="btn-primary inline-flex items-center gap-1.5">
                       <Plus className="w-3.5 h-3.5" />
                       New Version
@@ -293,7 +347,7 @@ export default function ProjectDetailPage() {
                     </div>
                     <h3 className="text-base font-semibold text-gray-900 mb-1">No versions yet</h3>
                     <p className="text-sm text-gray-500 mb-4">Upload your first HTML file to create a version</p>
-                    <Link href="/project/new">
+                    <Link href={`/project/new?projectId=${project.id}`}>
                       <button className="btn-primary text-sm">Upload</button>
                     </Link>
                   </div>
@@ -335,13 +389,15 @@ export default function ProjectDetailPage() {
                                 </p>
                               </div>
                               <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => handleCopyLink(v.number)}
-                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                                  title="Copy version link"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                </button>
+                                {i !== 0 && (
+                                  <button
+                                    onClick={() => handleDeleteVersion(v.id, v.number)}
+                                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-600"
+                                    title="Delete this version"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={async () => {
                                     if (!confirm(`Roll back to v${v.number}?`)) return;
@@ -378,7 +434,7 @@ export default function ProjectDetailPage() {
 
           {/* Settings tab */}
           {activeTab === 'settings' && (
-            <SettingsTab project={project} onUpdate={fetchProject} />
+            <SettingsTab project={project} onUpdate={fetchProject} onDelete={handleDelete} />
           )}
         </div>
       </div>
@@ -386,7 +442,7 @@ export default function ProjectDetailPage() {
   );
 }
 
-function SettingsTab({ project, onUpdate }: { project: any; onUpdate: () => void }) {
+function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: () => void; onDelete: () => void }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || '');
   const [visibility, setVisibility] = useState(project.visibility);
@@ -434,19 +490,6 @@ function SettingsTab({ project, onUpdate }: { project: any; onUpdate: () => void
       toast.error('Failed to save');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm(`Delete "${project.name}"? This cannot be undone.`)) return;
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success('Project deleted');
-        window.location.href = '/dashboard';
-      }
-    } catch {
-      toast.error('Failed to delete');
     }
   };
 
@@ -507,13 +550,14 @@ function SettingsTab({ project, onUpdate }: { project: any; onUpdate: () => void
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={`${window.location.origin}/p/${project.slug}`}
+                  value={`${window.location.origin}/api/proxy/${project.slug}?v=1`}
                   readOnly
                   className="input font-mono text-sm"
                 />
                 <button
+                  type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/p/${project.slug}`);
+                    navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${project.slug}?v=1`);
                     toast.success('Copied!');
                   }}
                   className="btn-secondary text-xs py-1.5"
@@ -613,7 +657,7 @@ function SettingsTab({ project, onUpdate }: { project: any; onUpdate: () => void
         <div className="card p-6 border border-rose-200 bg-rose-50/30">
           <h2 className="text-base font-semibold text-rose-600 mb-2">Danger Zone</h2>
           <p className="text-sm text-gray-500 mb-4">Permanently delete this project and all versions.</p>
-          <button className="btn-danger text-sm px-4 py-2" onClick={handleDelete}>
+          <button className="btn-danger text-sm px-4 py-2" onClick={onDelete}>
             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
             Delete Project
           </button>

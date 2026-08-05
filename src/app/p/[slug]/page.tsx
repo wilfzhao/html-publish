@@ -163,44 +163,15 @@ export default function PublicPreviewPage() {
     );
   }
 
-  return (
-    <div className="h-screen flex flex-col bg-gray-100">
-      {/* Top bar */}
-      <div className="h-11 bg-white border-b border-gray-200 flex items-center px-4 gap-3 flex-shrink-0">
-        <button
-          onClick={() => router.push('/')}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Eye className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-          <span className="text-xs text-gray-500 truncate">{projectName || 'Prototype'}</span>
-        </div>
-        <a
-          href={`/api/proxy/${slug}${version ? `?v=${version}` : ''}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-        >
-          <ExternalLink className="w-3 h-3" />
-          New Tab
-        </a>
-      </div>
+  if (typeof window !== 'undefined') {
+    window.location.replace(`/api/proxy/${slug}${version ? `?v=${version}` : ''}`);
+  }
 
-      {/* Preview iframe */}
-      <div className="flex-1 bg-gray-100 overflow-auto">
-        <div className="min-h-full flex items-center justify-center p-4">
-          <div className="bg-white shadow-lg w-full h-full max-w-5xl rounded-xl overflow-hidden">
-            <iframe
-              src={`/api/proxy/${slug}${version ? `?v=${version}` : ''}`}
-              className="w-full h-full border-0"
-              title="Prototype Preview"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-              style={{ minHeight: 'calc(100vh - 60px)' }}
-            />
-          </div>
-        </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div className="text-center">
+        <div className="w-8 h-8 border-3 border-indigo-300 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Redirecting...</p>
       </div>
     </div>
   );

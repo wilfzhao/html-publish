@@ -21,7 +21,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
     { href: '/dashboard?tab=favorites', label: 'Favorites', icon: Star },
-    { href: '/project/new', label: 'New Project', icon: Upload, primary: true },
   ];
 
   const isActive = (href: string) => {
@@ -44,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={`fixed lg:relative z-50 lg:z-auto flex flex-col bg-white border-r border-gray-100 transition-all duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
-          sidebarOpen ? 'w-64' : 'w-[72px]'
+          sidebarOpen ? 'w-48' : 'w-[72px]'
         } lg:translate-x-0 h-full`}
       >
         {/* Logo */}

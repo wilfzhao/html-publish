@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import fs from 'fs';
+import path from 'path';
 
 export async function POST(
   _req: NextRequest,
@@ -29,3 +31,47 @@ export async function POST(
     );
   }
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const version = await prisma.version.findUnique({
+      where: { id: params.id },
+      include: { project: true },
+    });
+
+    if (!version) {
+      return NextResponse.json({ error: 'Version not found' }, { status: 404 });
+    }
+
+    // Prevent deleting the current (active) version
+    if (version.project.currentVersionId === version.id) {
+      return NextResponse.json(
+        { error: 'Cannot delete the current active version. Rollback first.' },
+        { status: 400 }
+      );
+    }
+
+    // Delete upload directory for this version
+    const versionDir = path.join(process.cwd(), 'uploads', version.project.id, `v${version.number}`);
+    if (fs.existsSync(versionDir)) {
+      fs.rmSync(versionDir, { recursive: true, force: true });
+    }
+
+    // Delete version record (cascade deletes version files via Prisma relation)
+    await prisma.versionFile.deleteMany({ where: { versionId: version.id } });
+    await prisma.version.delete({ where: { id: version.id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/versions/[id] error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete version' },
+      { status: 500 }
+    );
+  }
+}
+
+export { POST };

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import {
   ArrowRight,
@@ -18,7 +18,9 @@ import { ALLOWED_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/validate';
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2>(1);
+  const searchParams = useSearchParams();
+  const isNewVersion = searchParams.has('projectId');
+  const [step, setStep] = useState<1 | 2>(() => (isNewVersion ? 2 : 1));
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'PUBLIC' | 'INTERNAL' | 'PASSWORD'>('PUBLIC');
@@ -30,6 +32,20 @@ export default function NewProjectPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [createdProject, setCreatedProject] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load project info for new version flow
+  useEffect(() => {
+    if (isNewVersion && !createdProject) {
+      const projectId = searchParams.get('projectId');
+      if (projectId) {
+        fetch(`/api/projects?id=${projectId}`)
+          .then(r => r.json())
+          .then(data => {
+            setCreatedProject(data[0]);
+          });
+      }
+    }
+  }, [isNewVersion, searchParams]);
 
   const handleCreateProject = async () => {
     if (!name.trim()) {
@@ -116,7 +132,7 @@ export default function NewProjectPage() {
         const data = await res.json();
         setUploadProgress(100);
         toast.success('Upload complete!');
-        router.push(`/project/${createdProject!.slug}`);
+        router.push(`/project/${data.project?.slug || createdProject!.slug}`);
       } else {
         const data = await res.json();
         toast.error(data.error || 'Upload failed');
@@ -136,31 +152,33 @@ export default function NewProjectPage() {
     <AppShell>
       <div className="p-6 lg:p-8 max-w-2xl mx-auto">
         {/* Steps indicator */}
-        <div className="flex items-center gap-3 mb-10">
-          {[1, 2].map((s) => (
-            <div key={s} className="flex items-center gap-3">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                  s === step
-                    ? 'bg-indigo-600 text-white shadow-[0_2px_8px_rgba(79,70,229,0.4)]'
-                    : s < step
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-gray-200 text-gray-400'
-                }`}
-              >
-                {s < step ? <Check className="w-4 h-4" /> : s}
+        {step === 1 && (
+          <div className="flex items-center gap-3 mb-10">
+            {[1, 2].map((s) => (
+              <div key={s} className="flex items-center gap-3">
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                    s === step
+                      ? 'bg-indigo-600 text-white shadow-[0_2px_8px_rgba(79,70,229,0.4)]'
+                      : s < step
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-200 text-gray-400'
+                  }`}
+                >
+                  {s < step ? <Check className="w-4 h-4" /> : s}
+                </div>
+                <span className={`text-sm font-medium ${
+                  s === step ? 'text-gray-900' : s < step ? 'text-emerald-600' : 'text-gray-400'
+                }`}>
+                  {s === 1 ? 'Create' : 'Upload'}
+                </span>
+                {s < 2 && (
+                  <div className={`w-12 h-0.5 transition-all duration-300 ${s < step ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                )}
               </div>
-              <span className={`text-sm font-medium ${
-                s === step ? 'text-gray-900' : s < step ? 'text-emerald-600' : 'text-gray-400'
-              }`}>
-                {s === 1 ? 'Create' : 'Upload'}
-              </span>
-              {s < 2 && (
-                <div className={`w-12 h-0.5 transition-all duration-300 ${s < step ? 'bg-emerald-500' : 'bg-gray-200'}`} />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="card p-8">
           {/* Step 1: Create project */}
@@ -347,7 +365,13 @@ export default function NewProjectPage() {
               <div className="flex justify-between pt-2">
                 <button
                   className="btn-secondary"
-                  onClick={() => setStep(1)}
+                  onClick={() => {
+                    if (isNewVersion && createdProject?.slug) {
+                      router.push(`/project/${createdProject.slug}?tab=versions`);
+                    } else {
+                      router.back();
+                    }
+                  }}
                   disabled={uploading}
                 >
                   Back

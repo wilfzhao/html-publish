@@ -5,9 +5,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug');
+    const projectId = searchParams.get('id');
 
     const where: any = {};
-    if (slug) {
+    if (projectId) {
+      where.id = projectId;
+    } else if (slug) {
       where.slug = slug;
     }
 
@@ -71,10 +74,16 @@ export async function POST(req: NextRequest) {
       ownerId = existingUser?.id || 'demo';
     }
 
+    // Generate slug: first try pinyin-like romanization, fall back to UUID if empty
     let slug = name.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 50);
+
+    // If slug is empty (e.g. Chinese-only name), append a unique suffix
+    if (!slug) {
+      slug = 'project-' + Math.random().toString(36).slice(2, 8);
+    }
 
     // Ensure uniqueness
     const existing = await prisma.project.findUnique({ where: { slug } });
