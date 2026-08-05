@@ -354,7 +354,7 @@ export default function ProjectDetailPage() {
                 )}
 
                 {project.versions && project.versions.length > 0 && (
-                  <div className="space-y-0">
+                  <div className="space-y-0 max-w-[600px]">
                     {project.versions.map((v: any, i: number) => (
                       <div key={v.id} className="flex gap-4">
                         {/* Timeline */}
