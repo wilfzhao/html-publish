@@ -40,7 +40,6 @@ export default function ProjectDetailPage() {
   });
   const [copied, setCopied] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'phone'>('desktop');
-  const [showQr, setShowQr] = useState(false);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -283,40 +282,7 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              {/* QR Code Panel */}
-              {showQr && (
-                <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center gap-4 flex-shrink-0">
-                  <div className="w-28 h-28 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
-                    <img
-                      src={`/api/qr?url=${encodeURIComponent(versionShareUrl)}`}
-                      alt="QR Code"
-                      className="w-24 h-24"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900 mb-1">Scan to preview</h4>
-                    <p className="text-xs text-gray-400 mb-2">Open this on your phone to preview</p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={versionShareUrl}
-                        readOnly
-                        className="input text-xs py-1.5 flex-1"
-                      />
-                      <button
-                        onClick={() => handleCopyLink()}
-                        className="btn-primary text-xs py-1.5 px-3"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Versions tab */}
+              {/* Versions tab */}
           {activeTab === 'versions' && (
             <div className="p-6 lg:p-8 overflow-y-auto h-full">
               <div className="max-w-3xl mx-auto">
