@@ -371,8 +371,8 @@ export default function ProjectDetailPage() {
 
                         {/* Version card */}
                         <div className={`pb-6 ${i < project.versions.length - 1 ? '' : ''}`}>
-                          <div className="card p-4 hover:shadow-sm transition-shadow min-w-0">
-                            <div className="flex items-start justify-between gap-3">
+                          <div className="card p-4 hover:shadow-sm transition-shadow w-full">
+                            <div className="flex items-start gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <span className="text-sm font-semibold text-gray-900">
