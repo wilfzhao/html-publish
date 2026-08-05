@@ -109,7 +109,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex-1" />
-          <span className="text-sm text-gray-400 hidden sm:block">v1.0.0</span>
         </header>
 
         {/* Page content */}
