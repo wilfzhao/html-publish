@@ -30,6 +30,7 @@ export default function NewProjectPage() {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [versionNote, setVersionNote] = useState('');
   const [createdProject, setCreatedProject] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,7 +42,12 @@ export default function NewProjectPage() {
         fetch(`/api/projects?id=${projectId}`)
           .then(r => r.json())
           .then(data => {
-            setCreatedProject(data[0]);
+            const project = data[0];
+            setCreatedProject(project);
+            // Pre-fill note with latest version's note
+            if (project?.versions?.[0]?.note) {
+              setVersionNote(project.versions[0].note);
+            }
           });
       }
     }
@@ -92,7 +98,14 @@ export default function NewProjectPage() {
     }
 
     setFiles((prev) => [...prev, ...valid]);
-  }, []);
+    // Set default note from filename (strip extension)
+    if (valid.length > 0) {
+      const name = valid[0].name.replace(/\.[^/.]+$/, '');
+      if (!versionNote) {
+        setVersionNote(name);
+      }
+    }
+  }, [versionNote]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -117,7 +130,7 @@ export default function NewProjectPage() {
       const formData = new FormData();
       formData.append('file', files[0]);
       formData.append('projectId', createdProject!.id);
-      formData.append('note', description || 'Initial upload');
+      formData.append('note', versionNote || 'Initial upload');
 
       setUploadProgress(40);
 
@@ -345,6 +358,18 @@ export default function NewProjectPage() {
                   </div>
                 </div>
               )}
+
+              {/* Version note */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Version Note</label>
+                <input
+                  type="text"
+                  value={versionNote}
+                  onChange={(e) => setVersionNote(e.target.value)}
+                  placeholder="e.g., Fix layout, Add navigation"
+                  className="input"
+                />
+              </div>
 
               {/* Upload progress */}
               {uploading && (
