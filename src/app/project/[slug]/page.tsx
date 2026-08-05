@@ -371,24 +371,24 @@ export default function ProjectDetailPage() {
 
                         {/* Version card */}
                         <div className={`pb-6 ${i < project.versions.length - 1 ? '' : ''}`}>
-                          <div className="card p-4 hover:shadow-sm transition-shadow">
+                          <div className="card p-4 hover:shadow-sm transition-shadow min-w-0">
                             <div className="flex items-start justify-between gap-3">
-                              <div>
+                              <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <span className="text-sm font-semibold text-gray-900">
                                     {v.note || `Version ${v.number}`}
                                   </span>
                                   {i === 0 && (
-                                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 flex-shrink-0">
                                       CURRENT
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-gray-400 truncate">
                                   {new Date(v.createdAt).toLocaleString()} · by {v.creator?.name || 'Unknown'}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 flex-shrink-0">
                                 {i !== 0 && (
                                   <button
                                     onClick={() => handleDeleteVersion(v.id, v.number)}
