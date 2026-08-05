@@ -166,7 +166,7 @@ export default function ProjectDetailPage() {
         <div className="px-6 lg:px-8 py-4 border-b border-gray-100 bg-white flex-shrink-0">
           <div className="flex items-center gap-4 mb-4">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/dashboard')}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -281,8 +281,10 @@ export default function ProjectDetailPage() {
                   />
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Versions tab */}
+          {/* Versions tab */}
           {activeTab === 'versions' && (
             <div className="p-6 lg:p-8 overflow-y-auto h-full">
               <div className="max-w-3xl mx-auto">

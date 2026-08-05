@@ -60,8 +60,7 @@ export async function DELETE(
       fs.rmSync(versionDir, { recursive: true, force: true });
     }
 
-    // Delete version record (cascade deletes version files via Prisma relation)
-    await prisma.versionFile.deleteMany({ where: { versionId: version.id } });
+    // Delete version record
     await prisma.version.delete({ where: { id: version.id } });
 
     return NextResponse.json({ success: true });
@@ -73,5 +72,3 @@ export async function DELETE(
     );
   }
 }
-
-export { POST };
