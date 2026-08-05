@@ -98,12 +98,10 @@ export default function NewProjectPage() {
     }
 
     setFiles((prev) => [...prev, ...valid]);
-    // Set default note from filename (strip extension)
-    if (valid.length > 0) {
+    // Set default note from filename (strip extension) for new versions
+    if (valid.length > 0 && isNewVersion) {
       const name = valid[0].name.replace(/\.[^/.]+$/, '');
-      if (!versionNote) {
-        setVersionNote(name);
-      }
+      setVersionNote(name);
     }
   }, [versionNote]);
 
