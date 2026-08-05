@@ -9,7 +9,6 @@ import {
   Star,
   Upload,
   Settings,
-  X,
 } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -55,12 +54,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="font-bold text-gray-900">ProtoHost</span>
             )}
           </Link>
-          <button
-            onClick={() => { setSidebarOpen(!sidebarOpen); setMobileOpen(false); }}
-            className="hidden lg:flex w-7 h-7 items-center justify-center rounded-md hover:bg-gray-100 text-gray-400"
-          >
-            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-          </button>
         </div>
 
         {/* Nav items */}
