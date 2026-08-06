@@ -347,6 +347,13 @@ export default function ProjectDetailPage() {
                                 </p>
                               </div>
                               <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  onClick={() => window.open(`/api/proxy/${project.slug}?v=${v.number}`, '_blank')}
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-cyan-600"
+                                  title="Preview this version"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
                                 {i !== 0 && (
                                   <button
                                     onClick={() => handleDeleteVersion(v.id, v.number)}
