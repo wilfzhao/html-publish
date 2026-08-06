@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutGrid,
   FolderOpen,
-  Star,
   Upload,
   Settings,
 } from 'lucide-react';
@@ -18,7 +17,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-    { href: '/dashboard?tab=favorites', label: 'Favorites', icon: Star },
   ];
 
   const isActive = (href: string) => {
