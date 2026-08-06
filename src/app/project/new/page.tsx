@@ -44,10 +44,8 @@ export default function NewProjectPage() {
           .then(data => {
             const project = data[0];
             setCreatedProject(project);
-            // Pre-fill note with latest version's note
-            if (project?.versions?.[0]?.note) {
-              setVersionNote(project.versions[0].note);
-            }
+            // For new version, clear note so filename default takes effect
+            setVersionNote('');
           });
       }
     }
