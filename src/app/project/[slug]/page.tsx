@@ -280,7 +280,7 @@ export default function ProjectDetailPage() {
                     <iframe
                       src={`/api/proxy/${slug}?v=${currentVersion.number}`}
                       className="w-full h-full border-0"
-                      title="Youchao Preview"
+                      title="Prototype Preview"
                       sandbox="allow-scripts allow-same-origin allow-popups allow-modals"
                       style={{ minHeight: '100%' }}
                     />

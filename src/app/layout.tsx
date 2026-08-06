@@ -15,7 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Youchao — 灵感成形，原型有巢',
+  title: 'ProtoHost — Share HTML Prototypes in Seconds',
   description: 'Upload, deploy, and collaborate on web prototypes — no servers needed.',
 };
 
