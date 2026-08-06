@@ -14,5 +14,5 @@
     <path d="M 16 22 Q 24 29 32 22" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   </g>
   <!-- Text -->
-  <text x="68" y="36" dominant-baseline="central" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="600" fill="#312E81">Youchao</text>
+  <text x="68" y="31" dominant-baseline="central" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="600" fill="#312E81">Youchao</text>
 </svg>
