@@ -28,27 +28,33 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const result = projects.map((p: any) => ({
-      id: p.id,
-      slug: p.slug,
-      name: p.name,
-      description: p.description,
-      visibility: p.visibility,
-      currentVersionId: p.currentVersionId,
-      currentVersionNumber: p._count?.versions || 0,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      accessCount: p._count?.accessLogs || 0,
-      versions: p.versions.map((v: any) => ({
-        id: v.id,
-        number: v.number,
-        note: v.note,
-        entryFile: v.entryFile,
-        createdAt: v.createdAt,
-        creator: v.uploader,
-      })),
-      _count: p._count,
-    }));
+    const result = projects.map((p: any) => {
+      // 找到当前活跃版本
+      const currentVersion = p.versions.find((v: any) => v.id === p.currentVersionId);
+      const currentVersionNumber = currentVersion ? currentVersion.number : p._count?.versions || 0;
+
+      return {
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        description: p.description,
+        visibility: p.visibility,
+        currentVersionId: p.currentVersionId,
+        currentVersionNumber,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        accessCount: p._count?.accessLogs || 0,
+        versions: p.versions.map((v: any) => ({
+          id: v.id,
+          number: v.number,
+          note: v.note,
+          entryFile: v.entryFile,
+          createdAt: v.createdAt,
+          creator: v.uploader,
+        })),
+        _count: p._count,
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {

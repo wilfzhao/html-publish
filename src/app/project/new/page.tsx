@@ -264,7 +264,14 @@ export default function NewProjectPage() {
                 </div>
               )}
 
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  className="btn-secondary"
+                  onClick={() => isNewVersion ? router.push(`/project/${createdProject?.slug}`) : router.back()}
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
                 <button className="btn-primary text-base px-8" onClick={handleCreateProject}>
                   Continue
                   <ArrowRight className="w-4 h-4 ml-1.5" />
@@ -384,19 +391,34 @@ export default function NewProjectPage() {
 
               {/* Actions */}
               <div className="flex justify-between pt-2">
-                <button
-                  className="btn-secondary"
-                  onClick={() => {
-                    if (isNewVersion && createdProject?.slug) {
-                      router.push(`/project/${createdProject.slug}?tab=versions`);
-                    } else {
-                      router.back();
-                    }
-                  }}
-                  disabled={uploading}
-                >
-                  Back
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      if (isNewVersion && createdProject?.slug) {
+                        router.push(`/project/${createdProject.slug}?tab=versions`);
+                      } else {
+                        router.back();
+                      }
+                    }}
+                    disabled={uploading}
+                  >
+                    Back
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      if (isNewVersion && createdProject?.slug) {
+                        router.push(`/project/${createdProject.slug}?tab=versions`);
+                      } else {
+                        router.back();
+                      }
+                    }}
+                    disabled={uploading}
+                  >
+                    Cancel
+                  </button>
+                </div>
                 <button
                   className="btn-primary disabled:opacity-50"
                   onClick={handleUpload}

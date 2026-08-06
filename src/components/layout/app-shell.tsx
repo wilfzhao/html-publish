@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutGrid,
   FolderOpen,
-  Upload,
   Settings,
 } from 'lucide-react';
 
@@ -45,12 +44,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className={`flex items-center h-16 px-4 border-b border-gray-100 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <Upload className="w-4.5 h-4.5 text-white" />
-            </div>
-            {sidebarOpen && (
-              <span className="font-bold text-gray-900">ProtoHost</span>
-            )}
+            <img
+              src="/assets/brand/youchao-logo-horizontal.svg"
+              alt="Youchao"
+              className="h-[28px]"
+            />
           </Link>
         </div>
 

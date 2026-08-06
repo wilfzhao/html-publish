@@ -21,7 +21,6 @@ import {
   Tablet,
   QrCode,
   Plus,
-  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -81,7 +80,7 @@ export default function ProjectDetailPage() {
   const handleCopyLink = (version?: number) => {
     const link = version
       ? `${window.location.origin}/api/proxy/${slug}?v=${version}`
-      : `${window.location.origin}/api/proxy/${slug}?v=${project?.currentVersionNumber || 1}`;
+      : `${window.location.origin}/api/proxy/${slug}?v=1`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success('Link copied to clipboard');
@@ -266,41 +265,25 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* Preview iframe */}
-              {currentVersion ? (
-                <div className="flex-1 bg-gray-50 overflow-auto flex items-center justify-center p-3">
-                  <div
-                    className={`bg-white shadow-sm transition-all duration-300 overflow-hidden ${
-                      previewDevice === 'desktop'
-                        ? 'w-full max-w-7xl h-full rounded-xl'
-                        : previewDevice === 'tablet'
-                        ? 'w-[768px] h-[600px] rounded-xl'
-                        : 'w-[375px] h-[667px] rounded-[2rem]'
-                    }`}
-                  >
-                    <iframe
-                      src={`/api/proxy/${slug}?v=${currentVersion.number}`}
-                      className="w-full h-full border-0"
-                      title="Youchao Preview"
-                      sandbox="allow-scripts allow-same-origin allow-popups allow-modals"
-                      style={{ minHeight: '100%' }}
-                    />
-                  </div>
+              <div className="flex-1 bg-gray-50 overflow-auto flex items-center justify-center p-3">
+                <div
+                  className={`bg-white shadow-sm transition-all duration-300 overflow-hidden ${
+                    previewDevice === 'desktop'
+                      ? 'w-full max-w-7xl h-full rounded-xl'
+                      : previewDevice === 'tablet'
+                      ? 'w-[768px] h-[600px] rounded-xl'
+                      : 'w-[375px] h-[667px] rounded-[2rem]'
+                  }`}
+                >
+                  <iframe
+                    src={currentVersion ? `/api/proxy/${slug}?v=${currentVersion.number}` : ''}
+                    className="w-full h-full border-0"
+                    title="Prototype Preview"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                    style={{ minHeight: '100%' }}
+                  />
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-                    <Upload className="w-7 h-7 text-gray-300" />
-                  </div>
-                  <h3 className="text-base font-semibold text-gray-700 mb-1">No prototype uploaded yet</h3>
-                  <p className="text-sm text-gray-400 mb-4">Upload your HTML file to see it previewed here</p>
-                  <Link href={`/project/new?projectId=${project.id}`}>
-                    <button className="btn-primary text-sm inline-flex items-center gap-1.5">
-                      <Upload className="w-3.5 h-3.5" />
-                      Upload Now
-                    </button>
-                  </Link>
-                </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -310,14 +293,12 @@ export default function ProjectDetailPage() {
               <div className="max-w-3xl mx-auto">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-semibold text-gray-900">Version History</h2>
-                  {project.versions && project.versions.length > 0 && (
-                    <Link href={`/project/new?projectId=${project.id}`}>
-                      <button className="btn-primary inline-flex items-center gap-1.5">
-                        <Plus className="w-3.5 h-3.5" />
-                        New Version
-                      </button>
-                    </Link>
-                  )}
+                  <Link href={`/project/new?projectId=${project.id}`}>
+                    <button className="btn-primary inline-flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5" />
+                      New Version
+                    </button>
+                  </Link>
                 </div>
 
                 {(!project.versions || project.versions.length === 0) && (
@@ -351,7 +332,7 @@ export default function ProjectDetailPage() {
 
                         {/* Version card */}
                         <div className={`pb-6 ${i < project.versions.length - 1 ? '' : ''}`}>
-                          <div style={{ width: 420 }} className="card p-4 hover:shadow-sm transition-shadow">
+                          <div style={{ width: 380 }} className="card p-4 hover:shadow-sm transition-shadow">
                             <div className="flex items-start gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
@@ -371,31 +352,21 @@ export default function ProjectDetailPage() {
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <button
                                   onClick={() => window.open(`/api/proxy/${project.slug}?v=${v.number}`, '_blank')}
-                                  className="group p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-gray-100"
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-cyan-600 transition-colors"
                                   title="Preview this version"
                                 >
-                                  <Eye className="w-4 h-4 group-hover:text-cyan-600" />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${project.slug}?v=${v.number}`);
-                                    toast.success('Link copied!');
-                                  }}
-                                  className="group p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-gray-100"
-                                  title="Copy link to this version"
-                                >
-                                  <Copy className="w-4 h-4 group-hover:text-indigo-600" />
+                                  <Eye className="w-4 h-4" />
                                 </button>
                                 {project.currentVersionId !== v.id && (
                                   <button
                                     onClick={() => handleDeleteVersion(v.id, v.number)}
-                                    className="group p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-gray-100"
+                                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-600 transition-colors"
                                     title="Delete this version"
                                   >
-                                    <Trash2 className="w-4 h-4 group-hover:text-rose-600" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
-                                 )}
-                                 <button
+                                )}
+                                <button
                                   onClick={async () => {
                                     if (!confirm(`Roll back to v${v.number}?`)) return;
                                     try {
@@ -446,6 +417,26 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
   const [visibility, setVisibility] = useState(project.visibility);
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [sendingComment, setSendingComment] = useState(false);
+
+  useEffect(() => {
+    fetchComments();
+  }, [project.id]);
+
+  const fetchComments = async () => {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/comments`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -468,6 +459,27 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
       toast.error('Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendComment = async () => {
+    if (!newComment.trim()) return;
+    setSendingComment(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newComment.trim() }),
+      });
+      if (res.ok) {
+        setNewComment('');
+        fetchComments();
+        toast.success('Comment added');
+      }
+    } catch {
+      toast.error('Failed to send');
+    } finally {
+      setSendingComment(false);
     }
   };
 
@@ -507,14 +519,14 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={`${window.location.origin}/api/proxy/${project.slug}?v=${project.currentVersionNumber}`}
+                  value={`${window.location.origin}/api/proxy/${project.slug}?v=1`}
                   readOnly
                   className="input font-mono text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${project.slug}?v=${project.currentVersionNumber}`);
+                    navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${project.slug}?v=1`);
                     toast.success('Copied!');
                   }}
                   className="btn-secondary text-xs py-1.5"
@@ -570,6 +582,46 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
             </button>
           </div>
         </div>
+
+        {/* Comments */}
+        <div className="card p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Comments ({comments.length})</h2>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Add a comment..."
+              className="input flex-1"
+              onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
+            />
+            <button
+              className="btn-primary"
+              onClick={handleSendComment}
+              disabled={sendingComment || !newComment.trim()}
+            >
+              Send
+            </button>
+          </div>
+
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {comments.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No comments yet</p>
+            ) : (
+              comments.map((c) => (
+                <div key={c.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-medium text-gray-700">{c.authorName}</span>
+                    <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">{c.content}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Danger zone */}
         <div className="card p-6 border border-rose-200 bg-rose-50/30">
           <h2 className="text-base font-semibold text-rose-600 mb-2">Danger Zone</h2>
