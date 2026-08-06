@@ -349,18 +349,18 @@ export default function ProjectDetailPage() {
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <button
                                   onClick={() => window.open(`/api/proxy/${project.slug}?v=${v.number}`, '_blank')}
-                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-cyan-600"
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-cyan-600 transition-colors"
                                   title="Preview this version"
                                 >
-                                  <Eye className="w-3.5 h-3.5" />
+                                  <Eye className="w-4 h-4" />
                                 </button>
                                 {i !== 0 && (
                                   <button
                                     onClick={() => handleDeleteVersion(v.id, v.number)}
-                                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-600"
+                                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-600 transition-colors"
                                     title="Delete this version"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
                                 <button
@@ -380,20 +380,11 @@ export default function ProjectDetailPage() {
                                       toast.error('Network error');
                                     }
                                   }}
-                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-indigo-600"
-                                  title="Rollback to this version"
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-indigo-600 transition-colors"
+                                  title="Roll back to this version"
                                 >
-                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  <RefreshCw className="w-4 h-4" />
                                 </button>
-                                <a
-                                  href={`/api/proxy/${slug}?v=${v.number}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-emerald-600"
-                                  title={`Preview v${v.number}`}
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </a>
                               </div>
                             </div>
                           </div>
