@@ -396,7 +396,7 @@ export default function NewProjectPage() {
                     className="btn-secondary"
                     onClick={() => {
                       if (isNewVersion && createdProject?.slug) {
-                        router.push(`/project/${createdProject.slug}?tab=versions`);
+                        router.push(`/project/${createdProject.slug}`);
                       } else {
                         router.back();
                       }
