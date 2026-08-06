@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Version */}
         <div className={`p-3 border-t border-gray-100 ${sidebarOpen ? '' : 'px-2'}`}>
           <div className={`text-xs text-gray-400 ${sidebarOpen ? '' : 'text-center'}`}>
-            v1.0.0
+            v0.1.0
           </div>
         </div>
       </aside>
