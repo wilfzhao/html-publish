@@ -233,7 +233,7 @@ export default function DashboardPage() {
                     </p>
                   )}
                   <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>v{project.currentVersionNumber}</span>
+                    <span>{project.currentVersionNumber}</span>
                     <span className="flex items-center gap-1">
                       <Eye className="w-3 h-3" />
                       {project.accessCount}
