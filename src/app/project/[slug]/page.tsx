@@ -374,7 +374,8 @@ export default function ProjectDetailPage() {
                                         toast.success(`Rolled back to v${v.number}`);
                                         fetchProject();
                                       } else {
-                                        toast.error('Rollback failed');
+                                        const errData = await res.json();
+                                        toast.error(errData.error || 'Rollback failed');
                                       }
                                     } catch {
                                       toast.error('Network error');
