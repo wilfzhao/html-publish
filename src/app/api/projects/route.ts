@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       description: p.description,
       visibility: p.visibility,
       currentVersionId: p.currentVersionId,
+      currentVersionNumber: p._count?.versions || 0,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
       accessCount: p._count?.accessLogs || 0,
