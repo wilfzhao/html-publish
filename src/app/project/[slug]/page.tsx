@@ -116,11 +116,14 @@ export default function ProjectDetailPage() {
     );
   }
 
+  const currentVersion = project.currentVersionId
+    ? project.versions?.find((v: any) => v.id === project.currentVersionId)
+    : project.versions?.[0];
   const latestVersion = project.versions?.[0];
   const baseUrl = window.location.origin;
   const shareUrl = `${baseUrl}/p/${slug}`;
-  const versionShareUrl = latestVersion
-    ? `${baseUrl}/p/${slug}?v=${latestVersion.number}`
+  const versionShareUrl = currentVersion
+    ? `${baseUrl}/p/${slug}?v=${currentVersion.number}`
     : shareUrl;
 
   const handleDeleteVersion = async (versionId: string, versionNumber: number) => {
@@ -273,7 +276,7 @@ export default function ProjectDetailPage() {
                   }`}
                 >
                   <iframe
-                    src={latestVersion ? `/api/proxy/${slug}?v=${latestVersion.number}` : ''}
+                    src={currentVersion ? `/api/proxy/${slug}?v=${currentVersion.number}` : ''}
                     className="w-full h-full border-0"
                     title="Prototype Preview"
                     sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
