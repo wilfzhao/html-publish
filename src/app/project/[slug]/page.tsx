@@ -336,7 +336,7 @@ export default function ProjectDetailPage() {
                                   <span className="text-sm font-semibold text-gray-900">
                                     {v.note || `Version ${v.number}`}
                                   </span>
-                                  {i === 0 && (
+                                  {project.currentVersionId === v.id && (
                                     <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 flex-shrink-0">
                                       CURRENT
                                     </span>
@@ -354,7 +354,7 @@ export default function ProjectDetailPage() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
-                                {i !== 0 && (
+                                {project.currentVersionId !== v.id && (
                                   <button
                                     onClick={() => handleDeleteVersion(v.id, v.number)}
                                     className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-600 transition-colors"
