@@ -367,7 +367,7 @@ export default function ProjectDetailPage() {
                                   onClick={async () => {
                                     if (!confirm(`Roll back to v${v.number}?`)) return;
                                     try {
-                                      const res = await fetch(`/api/versions/${v.id}/activate`, {
+                                      const res = await fetch(`/api/versions/${v.id}`, {
                                         method: 'POST',
                                       });
                                       if (res.ok) {
