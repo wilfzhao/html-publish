@@ -390,7 +390,7 @@ export default function ProjectDetailPage() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-emerald-600"
-                                  title="View this version"
+                                  title={`Preview v${v.number}`}
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </a>
