@@ -321,7 +321,7 @@ export default function ProjectDetailPage() {
                         {/* Timeline */}
                         <div className="flex flex-col items-center">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                            i === 0 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                            project.currentVersionId === v.id ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
                           }`}>
                             {v.number}
                           </div>
