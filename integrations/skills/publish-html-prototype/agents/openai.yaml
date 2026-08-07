@@ -1,0 +1,4 @@
+interface:
+  display_name: "Publish HTML Prototype"
+  short_description: "Publish static HTML prototypes to a linked project"
+  default_prompt: "Use $publish-html-prototype to publish the current prototype and return its preview link."
