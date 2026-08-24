@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getOrCreateDefaultUser } from '@/lib/default-user';
+import { hashProjectPassword } from '@/lib/project-access';
+import { createUniqueProjectSlug, isValidProjectSlug, normalizeProjectSlug } from '@/lib/project-slug';
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,17 +41,25 @@ export async function GET(req: NextRequest) {
         slug: p.slug,
         name: p.name,
         description: p.description,
-        visibility: p.visibility,
+        visibility: p.visibility === 'INTERNAL' ? 'PUBLIC' : p.visibility,
+        hasPassword: Boolean(p.password),
+        icon: p.icon,
         currentVersionId: p.currentVersionId,
         currentVersionNumber,
+        previewPath: `/p/${p.slug}`,
+        coverUrl: p.currentVersionId
+          ? `/api/covers/${encodeURIComponent(p.slug)}?v=${currentVersionNumber}`
+          : null,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         accessCount: p._count?.accessLogs || 0,
         versions: p.versions.map((v: any) => ({
           id: v.id,
           number: v.number,
+          label: v.label,
           note: v.note,
           entryFile: v.entryFile,
+          coverUrl: `/api/covers/${encodeURIComponent(p.slug)}?v=${v.number}`,
           createdAt: v.createdAt,
           creator: v.uploader,
         })),
@@ -69,34 +80,40 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, description, visibility, password, ownerId: ownerIdInput } = body;
+    const { name, description, visibility, password, icon, slug: slugInput, ownerId: ownerIdInput } = body;
     let ownerId = ownerIdInput;
 
     if (!name) {
       return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
     }
 
-    if (!ownerId) {
-      // If no owner specified, use the first existing user or fall back to demo
-      const existingUser = await prisma.user.findFirst();
-      ownerId = existingUser?.id || 'demo';
+    const projectVisibility = visibility || 'PUBLIC';
+    if (projectVisibility !== 'PUBLIC' && projectVisibility !== 'PASSWORD') {
+      return NextResponse.json({ error: 'Visibility must be Public or Password' }, { status: 400 });
+    }
+    if (!ownerId) ownerId = (await getOrCreateDefaultUser()).id;
+
+    let slug: string;
+    if (typeof slugInput === 'string' && slugInput.trim()) {
+      slug = normalizeProjectSlug(slugInput);
+      if (!isValidProjectSlug(slug)) {
+        return NextResponse.json({ error: 'URL slug must contain only lowercase letters, numbers, and hyphens' }, { status: 400 });
+      }
+      if (await prisma.project.findUnique({ where: { slug } })) {
+        return NextResponse.json({ error: 'This URL slug is already in use' }, { status: 409 });
+      }
+    } else {
+      slug = await createUniqueProjectSlug(
+        name,
+        async (candidate) => Boolean(await prisma.project.findUnique({ where: { slug: candidate }, select: { id: true } })),
+      );
     }
 
-    // Generate slug: first try pinyin-like romanization, fall back to UUID if empty
-    let slug = name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 50);
-
-    // If slug is empty (e.g. Chinese-only name), append a unique suffix
-    if (!slug) {
-      slug = 'project-' + Math.random().toString(36).slice(2, 8);
-    }
-
-    // Ensure uniqueness
-    const existing = await prisma.project.findUnique({ where: { slug } });
-    if (existing) {
-      slug = slug + '-' + Math.random().toString(36).slice(2, 6);
+    const passwordHash = projectVisibility === 'PASSWORD' && password
+      ? await hashProjectPassword(password)
+      : null;
+    if (projectVisibility === 'PASSWORD' && !passwordHash) {
+      return NextResponse.json({ error: 'Password is required for a password-protected project' }, { status: 400 });
     }
 
     const project = await prisma.project.create({
@@ -104,14 +121,15 @@ export async function POST(req: NextRequest) {
         name,
         description: description || '',
         slug,
-        visibility: visibility || 'PUBLIC',
-        password: password || null,
+        visibility: projectVisibility,
+        password: passwordHash,
+        icon: icon || null,
         ownerId,
         currentVersionId: null,
       },
     });
 
-    return NextResponse.json(project);
+    return NextResponse.json({ ...project, previewPath: `/p/${project.slug}` });
   } catch (error) {
     console.error('POST /api/projects error:', error);
     return NextResponse.json(
