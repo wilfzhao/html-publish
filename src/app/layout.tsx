@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import './tailwind-generated.css';
+import './globals.css';
 import { Toaster } from 'sonner';
 import IntroSplashWrapper from '@/components/intro/IntroSplashWrapper';
 

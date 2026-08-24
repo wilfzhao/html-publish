@@ -28,18 +28,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/20 z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative z-50 lg:z-auto flex flex-col bg-white border-r border-gray-100 transition-all duration-300 ${
+        className={`fixed md:relative z-50 md:z-auto flex flex-col bg-white border-r border-gray-100 transition-all duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
           sidebarOpen ? 'w-48' : 'w-[72px]'
-        } lg:translate-x-0 h-full`}
+        } md:translate-x-0 h-full`}
       >
         {/* Logo */}
         <div className={`flex items-center h-16 px-4 border-b border-gray-100 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
