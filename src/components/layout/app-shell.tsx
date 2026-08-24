@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -13,6 +13,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [displayVersion, setDisplayVersion] = useState('…');
+
+  useEffect(() => {
+    let active = true;
+    const loadVersion = async () => {
+      try {
+        const response = await fetch('/api/version', { cache: 'no-store' });
+        if (!response.ok) return;
+        const info = await response.json();
+        if (active && typeof info.displayVersion === 'string') setDisplayVersion(info.displayVersion);
+      } catch {
+        // Keep the last known version while the development server restarts.
+      }
+    };
+
+    void loadVersion();
+    const interval = window.setInterval(loadVersion, 5000);
+    window.addEventListener('focus', loadVersion);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', loadVersion);
+    };
+  }, []);
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid, primary: false },
@@ -80,8 +104,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Version */}
         <div className={`p-3 border-t border-gray-100 ${sidebarOpen ? '' : 'px-2'}`}>
-          <div className={`text-xs text-gray-400 ${sidebarOpen ? '' : 'text-center'}`}>
-            0.1.7
+          <div
+            className={`font-mono text-[10px] leading-4 text-gray-400 ${sidebarOpen ? 'break-all' : 'text-center'}`}
+            title={displayVersion}
+          >
+            {displayVersion}
           </div>
         </div>
       </aside>

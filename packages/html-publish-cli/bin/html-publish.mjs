@@ -9,7 +9,9 @@ import process from 'node:process';
 import { execSync, spawn } from 'node:child_process';
 import archiver from 'archiver';
 
-const CLI_VERSION = '0.1.7';
+const CLI_VERSION = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+).version;
 const CONFIG_NAME = '.html-publish.json';
 const DEFAULT_SERVER = process.env.HTML_PUBLISH_SERVER || 'http://localhost:8088';
 const IGNORE = ['.git/**', 'node_modules/**', '.next/**', '.env', '.env.*', '*.pem', '*.key', CONFIG_NAME];

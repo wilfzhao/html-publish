@@ -16,11 +16,24 @@ RUN npx prisma generate && npm run build
 
 FROM base AS runner
 WORKDIR /app
+ARG APP_VERSION=0.0.0
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
+ARG RELEASE_BUILD=true
 ENV NODE_ENV=production \
     PORT=8088 \
     UPLOAD_DIR=/data/uploads \
     COVER_DIR=/data/covers \
-    DATABASE_URL=file:/data/app.db
+    DATABASE_URL=file:/data/app.db \
+    HTML_PUBLISH_VERSION=${APP_VERSION} \
+    HTML_PUBLISH_GIT_COMMIT=${GIT_COMMIT} \
+    HTML_PUBLISH_BUILD_DATE=${BUILD_DATE} \
+    HTML_PUBLISH_RELEASE=${RELEASE_BUILD}
+
+LABEL org.opencontainers.image.title="HTML Publish" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
 
 RUN mkdir -p /data/uploads /data/covers \
     && chown -R node:node /data
