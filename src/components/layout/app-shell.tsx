@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <img
               src="/assets/brand/youchao-logo-horizontal.svg"
               alt="Youchao"
-              className="h-[28px]"
+              className="h-10 w-[140px]"
             />
           </Link>
         </div>
