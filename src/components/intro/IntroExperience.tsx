@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useFirstVisit } from '@/hooks/useFirstVisit';
 import {
   useVideoPlayback,
-  PlaybackState,
 } from '@/hooks/useVideoPlayback';
 
 const VIDEO_DURATION = 80;

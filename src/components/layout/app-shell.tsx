@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid, primary: false },
   ];
 
   const isActive = (href: string) => {

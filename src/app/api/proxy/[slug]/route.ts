@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { prisma } from '@/lib/db';
+import { getVersionUploadDirectory } from '@/lib/storage-paths';
 
 const CONTENT_TYPES: Record<string, string> = {
   html: 'text/html', htm: 'text/html', css: 'text/css',
@@ -27,8 +28,7 @@ export async function GET(
       include: {
         versions: {
           orderBy: { number: 'desc' },
-          take: 1,
-          select: { number: true, entryFile: true },
+          select: { number: true, label: true, entryFile: true },
         },
       },
     });
@@ -37,57 +37,64 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const versionNum = versionStr
-      ? parseInt(versionStr, 10)
-      : project.versions?.[0]?.number || 1;
+    const numericVersion = versionStr ? Number.parseInt(versionStr, 10) : null;
+    const selectedVersion = versionStr
+      ? project.versions.find((version) => version.number === numericVersion)
+        || project.versions.find((version) => version.label === versionStr)
+      : project.versions[0];
 
-    const versionDir = path.join(process.cwd(), 'uploads', project.id, `v${versionNum}`);
-    const fullPath = path.join(versionDir, filePath);
+    if (!selectedVersion) {
+      return NextResponse.json({ error: 'Version not found' }, { status: 404 });
+    }
 
-    if (!fullPath.startsWith(versionDir)) {
+    const versionDir = getVersionUploadDirectory(project.id, selectedVersion.number);
+    let servedPath = path.join(versionDir, filePath);
+
+    if (!servedPath.startsWith(`${versionDir}${path.sep}`)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     let fileBuffer: Buffer;
     try {
-      fileBuffer = await readFile(fullPath);
+      fileBuffer = await readFile(servedPath);
     } catch {
-      const defaultEntry = project.versions?.[0]?.entryFile || 'index.html';
+      servedPath = path.join(versionDir, selectedVersion.entryFile || 'index.html');
       try {
-        fileBuffer = await readFile(path.join(versionDir, defaultEntry));
+        fileBuffer = await readFile(servedPath);
       } catch {
         return NextResponse.json({ error: 'File not found' }, { status: 404 });
       }
     }
 
-    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+    const ext = servedPath.split('.').pop()?.toLowerCase() || '';
     const contentType = CONTENT_TYPES[ext] || 'application/octet-stream';
 
     if (ext === 'html' || ext === 'htm') {
       const htmlStr = fileBuffer.toString('utf-8');
-      const originBase = `/api/assets/${slug}`;
+      const versionKey = selectedVersion.label || String(selectedVersion.number);
+      const assetPrefix = `/api/assets/${slug}/?v=${encodeURIComponent(versionKey)}&path=`;
 
       const proxyScript = `
 <script>
 (function() {
-  var prefix = '${originBase}';
+  var prefix = ${JSON.stringify(assetPrefix)};
   document.querySelectorAll('link[href]').forEach(function(link) {
     var href = link.getAttribute('href');
     if (href && !href.startsWith('http') && !href.startsWith('data:') && !href.startsWith('//') && !href.startsWith('/api/assets/')) {
-      link.setAttribute('href', prefix + '/?path=' + encodeURIComponent(href));
+      link.setAttribute('href', prefix + encodeURIComponent(href));
     }
   });
   document.querySelectorAll('script[src]').forEach(function(script) {
     var src = script.getAttribute('src');
     if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('//') && !src.startsWith('/api/assets/')) {
-      script.setAttribute('src', prefix + '/?path=' + encodeURIComponent(src));
+      script.setAttribute('src', prefix + encodeURIComponent(src));
     }
   });
   document.querySelectorAll('img[src], a[href], form[action]').forEach(function(el) {
     var attr = el.getAttribute('src') || el.getAttribute('href') || el.getAttribute('action');
     if (attr && !attr.startsWith('http') && !attr.startsWith('data:') && !attr.startsWith('//') && !attr.startsWith('mailto:') && !attr.startsWith('javascript:') && !attr.startsWith('/api/assets/')) {
       var name = el.tagName.toLowerCase() === 'a' ? 'href' : el.tagName.toLowerCase() === 'form' ? 'action' : 'src';
-      el.setAttribute(name, prefix + '/?path=' + encodeURIComponent(attr));
+      el.setAttribute(name, prefix + encodeURIComponent(attr));
     }
   });
 })();
@@ -103,7 +110,7 @@ export async function GET(
       fileBuffer = Buffer.from(modifiedHtml, 'utf-8');
     }
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(Uint8Array.from(fileBuffer), {
       status: 200,
       headers: {
         'Content-Type': contentType,

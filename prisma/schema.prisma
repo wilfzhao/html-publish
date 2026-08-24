@@ -8,68 +8,142 @@ generator client {
 }
 
 model User {
-  id         String    @id @default(uuid())
-  email      String    @unique
+  id         String   @id @default(uuid())
+  email      String   @unique
   name       String
   department String?
-  role       String    @default("USER")
+  role       String   @default("USER")
   avatarUrl  String?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime @default(now())
 
   projects    Project[]
   versions    Version[]
   comments    Comment[]
+  apiTokens   ApiToken[]
+  deployments Deployment[]
 }
 
 model Project {
-  id               String     @id @default(uuid())
-  slug             String     @unique
+  id               String    @id @default(uuid())
+  slug             String    @unique
   name             String
   description      String?
   ownerId          String
-  owner            User       @relation(fields: [ownerId], references: [id])
+  owner            User      @relation(fields: [ownerId], references: [id])
   coverImageUrl    String?
   currentVersionId String?
-  visibility       String     @default("PUBLIC")
+  visibility       String    @default("PUBLIC")
   password         String?
+  icon             String?
   allowList        String?
-  isFavorite       Boolean    @default(false)
-  accessCount      Int        @default(0)
+  isFavorite       Boolean   @default(false)
+  accessCount      Int       @default(0)
   mainFile         String?
   expireAt         DateTime?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  versions    Version[]
-  comments    Comment[]
-  accessLogs  AccessLog[]
-  shareLinks  ShareLink[]
+  versions             Version[]
+  comments             Comment[]
+  accessLogs           AccessLog[]
+  shareLinks           ShareLink[]
+  apiTokens            ApiToken[]
+  deployments          Deployment[]
+  deviceAuthorizations DeviceAuthorization[]
 }
 
 model Version {
-  id         String  @id @default(uuid())
-  projectId  String
-  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  number     Int
-  note       String
-  entryFile  String
-  storagePath String
-  uploadedBy String
-  uploader   User    @relation(fields: [uploadedBy], references: [id])
-  createdAt  DateTime @default(now())
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number        Int
+  label         String?
+  note          String
+  entryFile     String
+  storagePath   String
+  uploadedBy    String
+  uploader      User     @relation(fields: [uploadedBy], references: [id])
+  createdAt     DateTime @default(now())
+  sourceClient  String?
+  sourceVersion String?
+  artifactHash  String?
+  gitCommit     String?
+  gitBranch     String?
 
   @@unique([projectId, number])
+  @@unique([projectId, label])
+}
+
+model ApiToken {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  tokenPrefix String
+  tokenHash   String    @unique
+  scopes      String    @default("project:deploy")
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId])
+}
+
+model Deployment {
+  id             String    @id @default(uuid())
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy      String
+  creator        User      @relation(fields: [createdBy], references: [id])
+  status         String    @default("CREATED")
+  note           String
+  entryFile      String
+  artifactHash   String?
+  artifactSize   Int?
+  fileCount      Int?
+  sourceClient   String?
+  sourceVersion  String?
+  gitCommit      String?
+  gitBranch      String?
+  idempotencyKey String
+  versionId      String?
+  errorCode      String?
+  errorMessage   String?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@unique([projectId, idempotencyKey])
+  @@index([projectId, createdAt])
+}
+
+model DeviceAuthorization {
+  id             String    @id @default(uuid())
+  deviceCodeHash String    @unique
+  userCode       String    @unique
+  clientName     String?
+  status         String    @default("PENDING")
+  projectId      String?
+  project        Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  expiresAt      DateTime
+  approvedAt     DateTime?
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([expiresAt])
 }
 
 model ShareLink {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versionId String?
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime?
   password  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }
 
 model AccessLog {

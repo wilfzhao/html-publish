@@ -1,25 +1,31 @@
 {
   "name": "html-publish",
-  "version": "0.1.0",
+  "version": "0.1.7",
   "private": true,
   "scripts": {
-    "dev": "export NO_PROXY=localhost,127.0.0.1,::1; export no_proxy=localhost,127.0.0.1,::1; tailwindcss -i ./src/app/globals.css -o ./src/app/tailwind-generated.css --watch & next dev -p 8088",
-    "build": "tailwindcss -i ./src/app/globals.css -o ./src/app/tailwind-generated.css && next build",
+    "db:prepare": "prisma generate && prisma migrate deploy",
+    "predev": "npm run db:prepare",
+    "dev": "next dev --webpack -p 8088",
+    "dev:start": "npm run db:prepare && node scripts/dev-service.mjs start",
+    "dev:stop": "node scripts/dev-service.mjs stop",
+    "dev:status": "node scripts/dev-service.mjs status",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "cli": "node packages/html-publish-cli/bin/html-publish.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.19",
     "@tanstack/react-query": "^5.59",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "archiver": "^7.0",
     "bcryptjs": "^2.4.3",
     "date-fns": "^3.6",
     "lucide-react": "^0.441",
-    "next": "^14.2.35",
+    "next": "^16.3.0",
     "qrcode": "^1.5.4",
     "react": "^18.3",
     "react-dom": "^18.3",
@@ -38,13 +44,16 @@
     "@types/react": "^18.3",
     "@types/react-dom": "^18.3",
     "autoprefixer": "^10.4",
-    "eslint": "^9.12",
-    "eslint-config-next": "^14.2",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.21",
     "nodemon": "^3.1.14",
     "postcss": "^8.4",
     "prisma": "^5.19",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9",
     "typescript": "^5.6"
+  },
+  "overrides": {
+    "sharp": "^0.35.0"
   }
 }

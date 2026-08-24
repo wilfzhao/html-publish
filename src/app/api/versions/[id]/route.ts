@@ -5,11 +5,12 @@ import path from 'path';
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const version = await prisma.version.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!version) {
@@ -34,11 +35,12 @@ export async function POST(
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const version = await prisma.version.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { project: true },
     });
 

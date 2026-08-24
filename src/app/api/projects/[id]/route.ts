@@ -5,11 +5,12 @@ import path from 'path';
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         versions: {
           orderBy: { number: 'desc' },
@@ -55,11 +56,12 @@ export async function GET(
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { versions: true },
     });
 
@@ -74,7 +76,7 @@ export async function DELETE(
     }
 
     // Delete project (will cascade to versions, comments, accessLogs via Prisma relations)
-    await prisma.project.delete({ where: { id: params.id } });
+    await prisma.project.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

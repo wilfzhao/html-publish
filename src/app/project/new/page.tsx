@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { Suspense, useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import {
@@ -12,27 +12,66 @@ import {
   X,
   AlertCircle,
   FileCode,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ALLOWED_EXTENSIONS, MAX_FILE_SIZE } from '@/lib/validate';
+import { DEFAULT_PROJECT_EMOJI, PROJECT_EMOJIS } from '@/lib/project-emojis';
+import { normalizeProjectSlug } from '@/lib/project-slug';
 
 export default function NewProjectPage() {
+  return (
+    <Suspense fallback={<NewProjectPageFallback />}>
+      <NewProjectPageContent />
+    </Suspense>
+  );
+}
+
+function NewProjectPageFallback() {
+  return (
+    <AppShell>
+      <div className="p-6 lg:p-8 max-w-2xl mx-auto">
+        <div className="card p-8 animate-pulse">
+          <div className="h-6 w-44 rounded bg-gray-200 mb-3" />
+          <div className="h-4 w-64 rounded bg-gray-100 mb-8" />
+          <div className="space-y-5">
+            <div className="h-10 rounded-lg bg-gray-100" />
+            <div className="h-24 rounded-lg bg-gray-100" />
+            <div className="h-20 rounded-lg bg-gray-100" />
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+function NewProjectPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isNewVersion = searchParams.has('projectId');
+  const returnToVersions = searchParams.get('returnTo') === 'versions';
   const [step, setStep] = useState<1 | 2>(() => (isNewVersion ? 2 : 1));
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
-  const [visibility, setVisibility] = useState<'PUBLIC' | 'INTERNAL' | 'PASSWORD'>('PUBLIC');
+  const [visibility, setVisibility] = useState<'PUBLIC' | 'PASSWORD'>('PUBLIC');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [expireAt, setExpireAt] = useState('');
+  const [icon, setIcon] = useState<string>(DEFAULT_PROJECT_EMOJI);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [versionNote, setVersionNote] = useState('');
+  const [versionLabel, setVersionLabel] = useState('');
   const [createdProject, setCreatedProject] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const projectReturnPath = (projectSlug?: string) => projectSlug
+    ? `/project/${projectSlug}${returnToVersions ? '?tab=versions' : ''}`
+    : '/dashboard';
 
   // Load project info for new version flow
   useEffect(() => {
@@ -63,10 +102,11 @@ export default function NewProjectPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
+          slug: slug.trim() || undefined,
           description: description.trim(),
           visibility,
           password: visibility === 'PASSWORD' ? password : undefined,
-          // ownerId omitted — API will auto-assign first user
+          icon: icon || null,
         }),
       });
 
@@ -90,18 +130,24 @@ export default function NewProjectPage() {
       return ALLOWED_EXTENSIONS.includes(ext);
     });
 
+    const invalidCount = newFiles.length - valid.length;
+    if (invalidCount > 0) {
+      toast.warning('Only .html files are supported');
+    }
+
     const tooLarge = valid.filter((f) => f.size > MAX_FILE_SIZE);
     if (tooLarge.length > 0) {
       toast.warning(`${tooLarge.length} file(s) exceed the size limit`);
     }
 
-    setFiles((prev) => [...prev, ...valid]);
+    const accepted = valid.filter((f) => f.size <= MAX_FILE_SIZE);
+    setFiles((prev) => [...prev, ...accepted]);
     // Set default note from filename (strip extension) for new versions
-    if (valid.length > 0 && isNewVersion) {
-      const name = valid[0].name.replace(/\.[^/.]+$/, '');
+    if (accepted.length > 0 && isNewVersion) {
+      const name = accepted[0].name.replace(/\.[^/.]+$/, '');
       setVersionNote(name);
     }
-  }, [versionNote]);
+  }, [isNewVersion]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -127,6 +173,7 @@ export default function NewProjectPage() {
       formData.append('file', files[0]);
       formData.append('projectId', createdProject!.id);
       formData.append('note', versionNote || 'Initial upload');
+      if (versionLabel.trim()) formData.append('version', versionLabel.trim());
 
       setUploadProgress(40);
 
@@ -141,7 +188,7 @@ export default function NewProjectPage() {
         const data = await res.json();
         setUploadProgress(100);
         toast.success('Upload complete!');
-        router.push(`/project/${data.project?.slug || createdProject!.slug}`);
+        router.push(projectReturnPath(data.project?.slug || createdProject!.slug));
       } else {
         const data = await res.json();
         toast.error(data.error || 'Upload failed');
@@ -199,16 +246,54 @@ export default function NewProjectPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Project Name *</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Checkout Flow v3"
-                  className="input"
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-lg transition-colors"
+                      title="Pick icon"
+                      aria-label="Pick project icon"
+                    >
+                      {icon}
+                    </button>
+                    {showEmojiPicker && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
+                        <div className="absolute top-full left-0 mt-1.5 z-50 w-72 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+                          <div className="grid grid-cols-8 grid-rows-6 gap-1">
+                            {PROJECT_EMOJIS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => {
+                                  setIcon(emoji);
+                                  setShowEmojiPicker(false);
+                                }}
+                                className={`w-7 h-7 flex items-center justify-center rounded-md text-base transition-colors hover:bg-gray-100 ${
+                                  icon === emoji ? 'bg-indigo-50 ring-1 ring-indigo-400' : ''
+                                }`}
+                                aria-label={`Use ${emoji} as project icon`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Checkout Flow v3"
+                    className="input flex-1"
+                    autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+                  />
+                </div>
               </div>
 
               <div>
@@ -223,12 +308,26 @@ export default function NewProjectPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Custom URL (optional)</label>
+                <div className="flex items-center rounded-lg border border-gray-200 bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
+                  <span className="pl-3 text-sm font-mono text-gray-400">/p/</span>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => setSlug(normalizeProjectSlug(e.target.value))}
+                    placeholder="checkout-v3"
+                    className="min-w-0 flex-1 border-0 bg-transparent px-1 py-2 text-sm font-mono outline-none"
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-gray-400">Leave blank to generate automatically. Must be unique.</p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Visibility</label>
                 <div className="space-y-2">
                   {([
                     { value: 'PUBLIC', label: 'Public', desc: 'Anyone with the link can view', icon: '🌍' },
-                    { value: 'INTERNAL', label: 'Internal', desc: 'Only logged-in users can view', icon: '🏢' },
-                    { value: 'PASSWORD', label: 'Password Protected', desc: 'Requires a password to view', icon: '🔒' },
+                    { value: 'PASSWORD', label: 'Password Protected', desc: 'Requires a password to manage this project', icon: '🔒' },
                   ] as const).map((opt) => (
                     <button
                       key={opt.value}
@@ -254,20 +353,30 @@ export default function NewProjectPage() {
               {visibility === 'PASSWORD' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter a password"
-                    className="input"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter a password"
+                      className="input pr-11"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((value) => !value)}
+                      className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   className="btn-secondary"
-                  onClick={() => isNewVersion ? router.push(`/project/${createdProject?.slug}`) : router.back()}
+                  onClick={() => isNewVersion ? router.push(projectReturnPath(createdProject?.slug)) : router.back()}
                   disabled={uploading}
                 >
                   Cancel
@@ -282,12 +391,12 @@ export default function NewProjectPage() {
 
           {/* Step 2: Upload */}
           {step === 2 && createdProject && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6 pt-6 animate-fade-in">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-1">
                   Upload to {createdProject.name}
                 </h2>
-                <p className="text-sm text-gray-500">Drop your HTML files or select them from your computer</p>
+                <p className="text-sm text-gray-500">Drop your HTML file or select it from your computer</p>
               </div>
 
               {/* Drop zone */}
@@ -304,16 +413,15 @@ export default function NewProjectPage() {
                   dragging ? 'text-indigo-500' : 'text-indigo-400'
                 }`} />
                 <p className="text-sm font-semibold text-gray-700 mb-1">
-                  Drop files here or <span className="text-indigo-600">browse</span>
+                  Drop an HTML file here or <span className="text-indigo-600">browse</span>
                 </p>
                 <p className="text-xs text-gray-400 max-w-xs mx-auto">
-                  HTML, CSS, JS, images supported • Max 50MB each
+                  .html only • Max 50MB
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  multiple
-                  accept=".html,.htm,.css,.js,.json,.png,.jpg,.jpeg,.gif,.svg,.webp,.ico,.woff,.woff2,.ttf,.map,.xml"
+                  accept=".html"
                   className="hidden"
                   onChange={(e) => {
                     const selected = Array.from(e.target.files || []);
@@ -362,6 +470,20 @@ export default function NewProjectPage() {
                 </div>
               )}
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Version</label>
+                <input
+                  type="text"
+                  value={versionLabel}
+                  onChange={(e) => setVersionLabel(e.target.value)}
+                  placeholder="e.g., 0.2.0 or v0.2.0"
+                  className="input font-mono"
+                />
+                <p className="mt-1.5 text-xs text-gray-400">
+                  Optional. If empty, it is detected from the filename or a version meta tag, then falls back to an automatic number.
+                </p>
+              </div>
+
               {/* Version note */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Version Note</label>
@@ -396,7 +518,7 @@ export default function NewProjectPage() {
                     className="btn-secondary"
                     onClick={() => {
                       if (isNewVersion && createdProject?.slug) {
-                        router.push(`/project/${createdProject.slug}`);
+                        router.push(projectReturnPath(createdProject.slug));
                       } else {
                         router.back();
                       }
@@ -409,7 +531,7 @@ export default function NewProjectPage() {
                     className="btn-secondary"
                     onClick={() => {
                       if (isNewVersion && createdProject?.slug) {
-                        router.push(`/project/${createdProject.slug}`);
+                        router.push(projectReturnPath(createdProject.slug));
                       } else {
                         router.back();
                       }

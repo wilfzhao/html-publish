@@ -8,6 +8,9 @@ content/
 .env*.local
 .DS_Store
 uploads/
+public/covers/
+.run/
+.html-publish.json
 src/app/tailwind.css
 src/app/tailwind-generated.css
 .alma-snapshots

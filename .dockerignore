@@ -1,0 +1,14 @@
+.git
+.next
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+uploads
+public/covers
+prisma/*.db*
+*.db
+*.db-journal
+*.db-wal
+Users

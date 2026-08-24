@@ -1,0 +1,15 @@
+{
+  "name": "@youchao/html-publish-cli",
+  "version": "0.1.7",
+  "description": "Publish static HTML prototypes to HTML Publish",
+  "type": "module",
+  "bin": {
+    "html-publish": "./bin/html-publish.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1"
+  }
+}

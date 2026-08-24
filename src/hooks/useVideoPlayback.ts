@@ -11,6 +11,7 @@ export type PlaybackState =
   | 'playing-muted'
   | 'restarting-with-sound'
   | 'playing-with-sound'
+  | 'fallback'
   | 'exiting'
   | 'completed';
 
@@ -133,7 +134,7 @@ export function useVideoPlayback({
     const handleError = () => {
       if (!isFinishing.current && mountedRef.current) {
         console.error('[useVideoPlayback] Video error:', video.error?.message);
-        setState('playing-muted'); // Stay in muted state, don't fallback on error
+        setState('fallback');
       }
     };
 

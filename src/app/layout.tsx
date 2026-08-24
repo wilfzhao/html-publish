@@ -1,18 +1,7 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import dynamic from 'next/dynamic';
 import './tailwind-generated.css';
 import { Toaster } from 'sonner';
-
-const IntroSplashWrapper = dynamic(
-  () => import('@/components/intro/IntroSplashWrapper'),
-  { ssr: false, loading: () => null }
-);
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-});
+import IntroSplashWrapper from '@/components/intro/IntroSplashWrapper';
 
 export const metadata: Metadata = {
   title: 'Youchao - 承载灵感，原型有巢',
@@ -32,7 +21,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/favicon-180.png" />
         <meta name="theme-color" content="#4F46E5" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <IntroSplashWrapper />
         {children}
         <Toaster position="top-right" richColors />

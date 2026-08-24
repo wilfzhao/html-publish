@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   Eye,
+  EyeOff,
   ArrowLeft,
   RefreshCw,
   Trash2,
@@ -22,8 +23,59 @@ import {
   QrCode,
   Plus,
   Upload,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { DEFAULT_PROJECT_EMOJI, PROJECT_EMOJIS } from '@/lib/project-emojis';
+import { copyTextToClipboard } from '@/lib/client-clipboard';
+import { normalizeProjectSlug } from '@/lib/project-slug';
+
+async function copyWithFeedback(value: string, successMessage = 'Copied!') {
+  if (await copyTextToClipboard(value)) {
+    toast.success(successMessage);
+    return true;
+  }
+
+  toast.error('Copy failed. Select the text and copy it manually.');
+  return false;
+}
+
+function EmojiPickerInline({ selected, onChange }: { selected: string; onChange: (emoji: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-lg transition-colors flex-shrink-0"
+        title="Pick icon"
+      >
+        {selected || DEFAULT_PROJECT_EMOJI}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1.5 z-50 w-72 rounded-xl border border-gray-200 bg-white shadow-xl p-2">
+            <div className="grid grid-cols-8 grid-rows-6 gap-1">
+              {PROJECT_EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => { onChange(e); setOpen(false); }}
+                  className={`w-7 h-7 flex items-center justify-center text-base rounded-md hover:bg-gray-100 transition-colors ${
+                    selected === e ? 'bg-indigo-50 ring-1 ring-indigo-400' : ''
+                  }`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -78,13 +130,11 @@ export default function ProjectDetailPage() {
     return () => clearInterval(interval);
   }, [fetchProject]);
 
-  const handleCopyLink = (version?: number) => {
-    const link = version
-      ? `${window.location.origin}/api/proxy/${slug}?v=${version}`
-      : `${window.location.origin}/api/proxy/${slug}?v=${project?.currentVersionNumber || 1}`;
-    navigator.clipboard.writeText(link);
+  const handleCopyLink = async (version?: number) => {
+    if (!project?.previewPath) return;
+    const link = `${window.location.origin}${project.previewPath}${version ? `/v/${version}` : ''}`;
+    if (!(await copyWithFeedback(link, 'Link copied to clipboard'))) return;
     setCopied(true);
-    toast.success('Link copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -122,17 +172,17 @@ export default function ProjectDetailPage() {
     : project.versions?.[0];
   const latestVersion = project.versions?.[0];
   const baseUrl = window.location.origin;
-  const shareUrl = `${baseUrl}/p/${slug}`;
+  const shareUrl = `${baseUrl}${project.previewPath}`;
   const versionShareUrl = currentVersion
-    ? `${baseUrl}/p/${slug}?v=${currentVersion.number}`
+    ? `${shareUrl}/v/${encodeURIComponent(currentVersion.label || String(currentVersion.number))}`
     : shareUrl;
 
-  const handleDeleteVersion = async (versionId: string, versionNumber: number) => {
-    if (!confirm(`Delete v${versionNumber}? This cannot be undone.`)) return;
+  const handleDeleteVersion = async (versionId: string, versionLabel: string) => {
+    if (!confirm(`Delete ${versionLabel}? This cannot be undone.`)) return;
     try {
       const res = await fetch(`/api/versions/${versionId}`, { method: 'DELETE' });
       if (res.ok) {
-        toast.success(`v${versionNumber} deleted`);
+        toast.success(`${versionLabel} deleted`);
         fetchProject();
       } else {
         const data = await res.json();
@@ -278,7 +328,7 @@ export default function ProjectDetailPage() {
                     }`}
                   >
                     <iframe
-                      src={`/api/proxy/${slug}?v=${currentVersion.number}`}
+                      src={`/api/proxy/${project.slug}?v=${encodeURIComponent(currentVersion.label || String(currentVersion.number))}`}
                       className="w-full h-full border-0"
                       title="Prototype Preview"
                       sandbox="allow-scripts allow-same-origin allow-popups allow-modals"
@@ -306,43 +356,56 @@ export default function ProjectDetailPage() {
 
           {/* Versions tab */}
           {activeTab === 'versions' && (
-            <div className="p-6 lg:p-8 overflow-y-auto h-full">
-              <div className="max-w-3xl mx-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900">Version History</h2>
-                  {project.versions && project.versions.length > 0 && (
-                    <Link href={`/project/new?projectId=${project.id}`}>
+            <div
+              className={`${project.versions && project.versions.length > 0 ? 'p-6 lg:p-8' : ''} overflow-y-auto h-full`}
+            >
+              <div className={`max-w-3xl mx-auto ${!project.versions || project.versions.length === 0 ? 'h-full' : ''}`}>
+                {project.versions && project.versions.length > 0 && (
+                  <div className="mx-auto mb-6 flex w-full max-w-[524px] items-center justify-end">
+                    <Link href={`/project/new?projectId=${project.id}&returnTo=versions`}>
                       <button className="btn-primary inline-flex items-center gap-1.5">
                         <Plus className="w-3.5 h-3.5" />
                         New Version
                       </button>
                     </Link>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {(!project.versions || project.versions.length === 0) && (
-                  <div className="text-center py-16">
-                    <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                      <History className="w-6 h-6 text-gray-400" />
+                  <div
+                    className="flex h-full flex-col items-center justify-center px-6 text-center"
+                    style={{ paddingTop: 52 }}
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                      <Upload className="w-7 h-7 text-gray-300" />
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900 mb-1">No versions yet</h3>
-                    <p className="text-sm text-gray-500 mb-4">Upload your first HTML file to create a version</p>
-                    <Link href={`/project/new?projectId=${project.id}`}>
-                      <button className="btn-primary text-sm">Upload</button>
+                    <h3 className="text-base font-semibold text-gray-700 mb-1">No prototype uploaded yet</h3>
+                    <p className="text-sm text-gray-400 mb-4">Upload your first HTML file to create a version</p>
+                    <Link href={`/project/new?projectId=${project.id}&returnTo=versions`}>
+                      <button className="btn-primary text-sm inline-flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        Upload Now
+                      </button>
                     </Link>
                   </div>
                 )}
 
                 {project.versions && project.versions.length > 0 && (
-                  <div className="space-y-0 max-w-[600px]">
+                  <div className="mx-auto w-full max-w-[524px] space-y-0">
                     {project.versions.map((v: any, i: number) => (
-                      <div key={v.id} className="flex gap-4">
+                      <div
+                        key={v.id}
+                        className="grid w-full grid-cols-[64px_minmax(0,1fr)] gap-3 sm:grid-cols-[88px_minmax(0,420px)] sm:gap-4"
+                      >
                         {/* Timeline */}
-                        <div className="flex flex-col items-center">
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                        <div className="flex min-w-0 flex-col items-center">
+                          <div
+                            className={`flex h-9 max-w-full min-w-9 flex-shrink-0 items-center justify-center truncate rounded-full px-3 text-xs font-bold ${
                             project.currentVersionId === v.id ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
-                          }`}>
-                            {v.number}
+                          }`}
+                            title={v.label || `v${v.number}`}
+                          >
+                            {v.label || v.number}
                           </div>
                           {i < project.versions.length - 1 && (
                             <div className="w-px flex-1 bg-gray-100 min-h-[20px]" />
@@ -350,13 +413,13 @@ export default function ProjectDetailPage() {
                         </div>
 
                         {/* Version card */}
-                        <div className={`pb-6 ${i < project.versions.length - 1 ? '' : ''}`}>
-                          <div style={{ width: 420 }} className="card p-4 hover:shadow-sm transition-shadow">
+                        <div className="min-w-0 pb-6">
+                          <div className="card min-h-[72px] w-full p-4 transition-shadow hover:shadow-sm">
                             <div className="flex items-start gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <span className="text-sm font-semibold text-gray-900">
-                                    {v.note || `Version ${v.number}`}
+                                    {v.note || `Version ${v.label || v.number}`}
                                   </span>
                                   {project.currentVersionId === v.id && (
                                     <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 flex-shrink-0">
@@ -370,17 +433,14 @@ export default function ProjectDetailPage() {
                               </div>
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <button
-                                  onClick={() => window.open(`/api/proxy/${project.slug}?v=${v.number}`, '_blank')}
+                                  onClick={() => window.open(`/p/${project.slug}/v/${encodeURIComponent(v.label || String(v.number))}`, '_blank')}
                                   className="group p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-gray-100"
                                   title="Preview this version"
                                 >
                                   <Eye className="w-4 h-4 group-hover:text-cyan-600" />
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${project.slug}?v=${v.number}`);
-                                    toast.success('Link copied!');
-                                  }}
+                                  onClick={() => copyWithFeedback(`${window.location.origin}${project.previewPath}/v/${encodeURIComponent(v.label || String(v.number))}`, 'Link copied!')}
                                   className="group p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-gray-100"
                                   title="Copy link to this version"
                                 >
@@ -388,7 +448,7 @@ export default function ProjectDetailPage() {
                                 </button>
                                 {project.currentVersionId !== v.id && (
                                   <button
-                                    onClick={() => handleDeleteVersion(v.id, v.number)}
+                                    onClick={() => handleDeleteVersion(v.id, v.label || `v${v.number}`)}
                                     className="group p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-gray-100"
                                     title="Delete this version"
                                   >
@@ -397,13 +457,13 @@ export default function ProjectDetailPage() {
                                  )}
                                  <button
                                   onClick={async () => {
-                                    if (!confirm(`Roll back to v${v.number}?`)) return;
+                                    if (!confirm(`Roll back to ${v.label || `v${v.number}`}?`)) return;
                                     try {
                                       const res = await fetch(`/api/versions/${v.id}`, {
                                         method: 'POST',
                                       });
                                       if (res.ok) {
-                                        toast.success(`Rolled back to v${v.number}`);
+                                        toast.success(`Rolled back to ${v.label || `v${v.number}`}`);
                                         fetchProject();
                                       } else {
                                         const errData = await res.json();
@@ -441,10 +501,15 @@ export default function ProjectDetailPage() {
 }
 
 function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: () => void; onDelete: () => void }) {
+  const router = useRouter();
   const [name, setName] = useState(project.name);
+  const [slug, setSlug] = useState(project.slug);
   const [description, setDescription] = useState(project.description || '');
   const [visibility, setVisibility] = useState(project.visibility);
   const [password, setPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [icon, setIcon] = useState(project.icon || DEFAULT_PROJECT_EMOJI);
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
     setSaving(true);
@@ -454,15 +519,27 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
+          slug,
           description: description || undefined,
           visibility,
           password: password || undefined,
+          icon: icon || null,
         }),
       });
       if (res.ok) {
+        const updatedProject = await res.json();
         toast.success('Settings saved');
-        onUpdate();
         setPassword('');
+        setChangingPassword(false);
+        setShowPassword(false);
+        if (updatedProject.slug !== project.slug) {
+          router.replace(`/project/${updatedProject.slug}`);
+        } else {
+          onUpdate();
+        }
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to save');
       }
     } catch {
       toast.error('Failed to save');
@@ -473,8 +550,7 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
 
   const visibilityOptions = [
     { value: 'PUBLIC', label: 'Public', desc: 'Anyone with the link can view', emoji: '🌍' },
-    { value: 'INTERNAL', label: 'Internal', desc: 'Only logged-in users can view', emoji: '🏢' },
-    { value: 'PASSWORD', label: 'Password', desc: 'Requires a password to view', emoji: '🔒' },
+    { value: 'PASSWORD', label: 'Password', desc: 'Requires a password to manage this project', emoji: '🔒' },
   ];
 
   return (
@@ -485,13 +561,31 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
           <h2 className="text-base font-semibold text-gray-900 mb-4">Project Info</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="input"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Project Name</label>
+              <div className="flex items-center gap-3">
+                <EmojiPickerInline selected={icon} onChange={setIcon} />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="input flex-1"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">URL Slug</label>
+              <div className="flex items-center rounded-lg border border-gray-200 bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
+                <span className="pl-3 text-sm font-mono text-gray-400">/p/</span>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(normalizeProjectSlug(e.target.value))}
+                  className="min-w-0 flex-1 border-0 bg-transparent px-1 py-2 text-sm font-mono outline-none"
+                />
+              </div>
+              {slug !== project.slug && (
+                <p className="mt-1.5 text-xs text-amber-600">Changing this will invalidate previously shared links.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
@@ -507,16 +601,13 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={`${window.location.origin}/api/proxy/${project.slug}?v=${project.currentVersionNumber}`}
+                  value={`${window.location.origin}${project.previewPath}`}
                   readOnly
                   className="input font-mono text-sm"
                 />
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${project.slug}?v=${project.currentVersionNumber}`);
-                    toast.success('Copied!');
-                  }}
+                  onClick={() => copyWithFeedback(`${window.location.origin}${project.previewPath}`)}
                   className="btn-secondary text-xs py-1.5"
                 >
                   Copy
@@ -553,14 +644,49 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
 
           {visibility === 'PASSWORD' && (
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter a password"
-                className="input"
-              />
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                {project.hasPassword && !changingPassword && (
+                  <span className="text-xs font-medium text-emerald-600">Password is set</span>
+                )}
+              </div>
+              {project.hasPassword && !changingPassword ? (
+                <div className="flex items-center gap-2">
+                  <input type="password" value="password-is-set" readOnly className="input" aria-label="Saved password" />
+                  <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => setChangingPassword(true)}>
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={project.hasPassword ? 'Enter a new password' : 'Enter a password'}
+                      className="input pr-11"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((value) => !value)}
+                      className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {project.hasPassword && (
+                    <button
+                      type="button"
+                      onClick={() => { setChangingPassword(false); setPassword(''); setShowPassword(false); }}
+                      className="mt-2 text-xs font-medium text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel password change
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -570,6 +696,7 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
             </button>
           </div>
         </div>
+        <AiPublishCard project={project} />
         {/* Danger zone */}
         <div className="card p-6 border border-rose-200 bg-rose-50/30">
           <h2 className="text-base font-semibold text-rose-600 mb-2">Danger Zone</h2>
@@ -580,6 +707,130 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+type DeployToken = {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+};
+
+function AiPublishCard({ project }: { project: any }) {
+  const [tokens, setTokens] = useState<DeployToken[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [publishServer, setPublishServer] = useState('');
+
+  const loadTokens = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/tokens`);
+      if (res.ok) {
+        const data = await res.json();
+        setTokens(data.items || []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [project.id]);
+
+  useEffect(() => {
+    loadTokens();
+  }, [loadTokens]);
+
+  useEffect(() => {
+    setPublishServer(window.location.origin);
+  }, []);
+
+  const revokeToken = async (tokenId: string) => {
+    const res = await fetch(`/api/projects/${project.id}/tokens/${tokenId}`, { method: 'DELETE' });
+    if (res.ok) {
+      await loadTokens();
+      toast.success('Publishing access revoked');
+    } else {
+      toast.error('Failed to revoke token');
+    }
+  };
+
+  const skillSource = process.env.NEXT_PUBLIC_SKILL_REPO_URL
+    || 'https://github.com/wilfzhao/html-publish/tree/main/integrations/skills/publish-html-prototype';
+  const cliPackageUrl = publishServer
+    ? `${publishServer}/api/v1/cli/package?server=${encodeURIComponent(publishServer)}`
+    : '';
+  const cliInstallCommand = cliPackageUrl ? `npm install -g '${cliPackageUrl}'` : '';
+  const installPrompt = `$skill-installer 从 ${skillSource} 安装 publish-html-prototype`;
+  const activeTokens = tokens.filter((token) => !token.revokedAt);
+  const publishPrompt = `使用 $publish-html-prototype，把当前原型发布到「${project.name}」，备注「描述本次修改」`;
+
+  return (
+    <div className="card p-6">
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">AI Publish</h2>
+          <p className="text-sm text-gray-500 mt-1">Let an AI coding agent publish new prototype versions directly.</p>
+        </div>
+        <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">MVP</span>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">1. Install CLI</label>
+          {cliInstallCommand ? (
+            <CopyableCommand value={cliInstallCommand} />
+          ) : (
+            <div className="h-10 animate-pulse rounded-lg border border-gray-200 bg-gray-50" />
+          )}
+          <p className="mt-1.5 text-xs text-gray-400">Run once from any directory. The CLI is downloaded from this server and automatically remembers its address.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">2. Install Skill in Codex</label>
+          <CopyableCommand value={installPrompt} />
+          <p className="mt-1.5 text-xs text-gray-400">Paste this sentence into Codex. The Skill will be available on the next turn.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">3. Publish with AI</label>
+          <CopyableCommand value={publishPrompt} />
+          <p className="mt-1.5 text-xs text-gray-400">On the first publish, a browser page opens automatically. Choose this project and click Allow; publishing then continues by itself.</p>
+        </div>
+        {!loading && activeTokens.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Connected publishing clients</label>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+              {activeTokens.map((token) => (
+                <div key={token.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-800">{token.name}</div>
+                    <div className="text-xs text-gray-400 font-mono">
+                      {token.tokenPrefix}… · {token.lastUsedAt ? `used ${new Date(token.lastUsedAt).toLocaleDateString()}` : 'never used'}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => revokeToken(token.id)} className="text-xs font-medium text-rose-600 hover:text-rose-700">Revoke</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CopyableCommand({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    if (!(await copyWithFeedback(value))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+      <code className="min-w-0 flex-1 whitespace-pre-wrap break-all text-xs text-gray-700">{value}</code>
+      <button type="button" onClick={copy} className="flex-shrink-0 text-gray-400 hover:text-indigo-600" aria-label="Copy command">
+        {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+      </button>
     </div>
   );
 }

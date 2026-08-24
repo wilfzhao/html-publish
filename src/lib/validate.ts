@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createProjectSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(1000).optional(),
-  visibility: z.enum(['PUBLIC', 'INTERNAL', 'PASSWORD', 'RESTRICTED']).default('PUBLIC'),
+  visibility: z.enum(['PUBLIC', 'PASSWORD']).default('PUBLIC'),
   password: z.string().min(4).optional().or(z.literal('')),
   expireAt: z.string().datetime().optional().or(z.literal('')),
 });
@@ -11,7 +11,7 @@ export const createProjectSchema = z.object({
 export const updateProjectSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(1000).optional(),
-  visibility: z.enum(['PUBLIC', 'INTERNAL', 'PASSWORD', 'RESTRICTED']).optional(),
+  visibility: z.enum(['PUBLIC', 'PASSWORD']).optional(),
   password: z.string().min(4).optional().or(z.literal('')),
   expireAt: z.string().datetime().optional().or(z.literal('')),
   isFavorite: z.boolean().optional(),
@@ -26,12 +26,7 @@ export const commentSchema = z.object({
 
 export const MAX_FILE_SIZE = parseInt(process.env.MAX_UPLOAD_SIZE || '52428800', 10);
 
-export const ALLOWED_EXTENSIONS = [
-  '.html', '.htm', '.css', '.js', '.json',
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico',
-  '.woff', '.woff2', '.ttf', '.eot',
-  '.map', '.xml', '.txt', '.md', '.yaml', '.yml',
-];
+export const ALLOWED_EXTENSIONS = ['.html'];
 
 export function isAllowedFile(filename: string): boolean {
   const ext = '.' + filename.split('.').pop()?.toLowerCase() || '';

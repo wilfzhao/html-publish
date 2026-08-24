@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { getVersionUploadDirectory } from '@/lib/storage-paths';
 
 const CONTENT_TYPES: Record<string, string> = {
   html: 'text/html', htm: 'text/html', css: 'text/css',
@@ -27,8 +28,7 @@ export async function GET(
       include: {
         versions: {
           orderBy: { number: 'desc' },
-          take: 1,
-          select: { number: true, entryFile: true },
+          select: { number: true, label: true, entryFile: true },
         },
       },
     });
@@ -37,38 +37,45 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const versionNum = versionStr
-      ? parseInt(versionStr, 10)
-      : project.versions?.[0]?.number || 1;
+    const numericVersion = versionStr ? Number.parseInt(versionStr, 10) : null;
+    const selectedVersion = versionStr
+      ? project.versions.find((version) => version.number === numericVersion)
+        || project.versions.find((version) => version.label === versionStr)
+      : project.versions[0];
 
-    const versionDir = path.join(process.cwd(), 'uploads', project.id, `v${versionNum}`);
-    const fullPath = path.join(versionDir, filePath);
+    if (!selectedVersion) {
+      return NextResponse.json({ error: 'Version not found' }, { status: 404 });
+    }
+
+    const versionDir = getVersionUploadDirectory(project.id, selectedVersion.number);
+    let servedPath = path.join(versionDir, filePath);
 
     // Security: prevent path traversal
-    if (!fullPath.startsWith(versionDir)) {
+    if (!servedPath.startsWith(`${versionDir}${path.sep}`)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Determine fallback entry file (prefer the version's entryFile)
-    const defaultEntry = project.versions?.[0]?.entryFile || 'index.html';
     let fileBuffer: Buffer;
     try {
-      fileBuffer = await readFile(fullPath);
+      fileBuffer = await readFile(servedPath);
     } catch {
+      servedPath = path.join(versionDir, selectedVersion.entryFile || 'index.html');
       try {
-        fileBuffer = await readFile(path.join(versionDir, defaultEntry));
+        fileBuffer = await readFile(servedPath);
       } catch {
         return NextResponse.json({ error: 'File not found' }, { status: 404 });
       }
     }
 
-    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+    const ext = servedPath.split('.').pop()?.toLowerCase() || '';
     const contentType = CONTENT_TYPES[ext] || 'application/octet-stream';
 
     // For HTML files, inject a base tag so relative URLs resolve to /api/assets/<slug>/path=<relative>
     if (ext === 'html' || ext === 'htm') {
       const htmlStr = fileBuffer.toString('utf-8');
-      const baseHref = `/api/assets/${slug}/?path=`;
+      const versionKey = selectedVersion.label || String(selectedVersion.number);
+      const baseHref = `/api/assets/${slug}/?v=${encodeURIComponent(versionKey)}&path=`;
       let modifiedHtml = htmlStr.replace(
         /<head(\s[^>]*)?>/,
         `<head$1>\n<base href="${baseHref}">`
@@ -78,7 +85,7 @@ export async function GET(
       }
     }
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(Uint8Array.from(fileBuffer), {
       status: 200,
       headers: {
         'Content-Type': contentType,
