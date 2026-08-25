@@ -88,7 +88,7 @@ function NewProjectPageContent() {
           });
       }
     }
-  }, [isNewVersion, searchParams]);
+  }, [createdProject, isNewVersion, searchParams]);
 
   const handleCreateProject = async () => {
     if (!name.trim()) {

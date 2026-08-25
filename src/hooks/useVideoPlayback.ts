@@ -29,6 +29,15 @@ export function useVideoPlayback({
   const isFinishing = useRef(false);
   const mountedRef = useRef(true);
 
+  const cleanup = useCallback(() => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+  }, []);
+
   // Track state changes
   useEffect(() => {
     if (onStateChange) onStateChange(state);
@@ -41,16 +50,7 @@ export function useVideoPlayback({
       mountedRef.current = false;
       cleanup();
     };
-  }, []);
-
-  const cleanup = useCallback(() => {
-    if (videoRef.current) {
-      const video = videoRef.current;
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-    }
-  }, []);
+  }, [cleanup]);
 
   const finishIntro = useCallback((reason: string) => {
     if (isFinishing.current || !mountedRef.current) return;

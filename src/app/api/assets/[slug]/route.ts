@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { getVersionUploadDirectory } from '@/lib/storage-paths';
+import { hasProjectAccess } from '@/lib/project-access';
 
 const CONTENT_TYPES: Record<string, string> = {
   html: 'text/html', htm: 'text/html', css: 'text/css',
@@ -36,6 +37,9 @@ export async function GET(
     if (!project) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
+    if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const numericVersion = versionStr ? Number.parseInt(versionStr, 10) : null;
     const selectedVersion = versionStr
@@ -48,7 +52,7 @@ export async function GET(
     }
 
     const versionDir = getVersionUploadDirectory(project.id, selectedVersion.number);
-    let servedPath = path.join(versionDir, filePath);
+    let servedPath = path.resolve(versionDir, filePath);
 
     // Security: prevent path traversal
     if (!servedPath.startsWith(`${versionDir}${path.sep}`)) {
@@ -60,7 +64,10 @@ export async function GET(
     try {
       fileBuffer = await readFile(servedPath);
     } catch {
-      servedPath = path.join(versionDir, selectedVersion.entryFile || 'index.html');
+      servedPath = path.resolve(versionDir, selectedVersion.entryFile || 'index.html');
+      if (!servedPath.startsWith(`${versionDir}${path.sep}`)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       try {
         fileBuffer = await readFile(servedPath);
       } catch {

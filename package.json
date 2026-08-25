@@ -1,6 +1,6 @@
 {
   "name": "html-publish",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "scripts": {
     "db:prepare": "prisma generate && prisma migrate deploy",
@@ -16,7 +16,7 @@
     "image:build:dev": "node scripts/build-image.mjs",
     "image:release": "node scripts/build-image.mjs --release --push",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",

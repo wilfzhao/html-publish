@@ -118,8 +118,8 @@ function IntroSplash({
 
   // Cleanup on unmount
   useEffect(() => {
+    const video = videoRef.current;
     return () => {
-      const video = videoRef.current;
       if (video) {
         video.pause();
         video.removeAttribute('src');

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import fs from 'fs';
-import path from 'path';
+import { getProjectUploadDirectory } from '@/lib/storage-paths';
+import { hashProjectPassword } from '@/lib/project-access';
+import { isValidProjectSlug, normalizeProjectSlug } from '@/lib/project-slug';
 
 export async function GET(
   _req: NextRequest,
@@ -54,6 +56,67 @@ export async function GET(
   }
 }
 
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const existing = await prisma.project.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const body = await req.json();
+    const name = typeof body.name === 'string' ? body.name.trim() : existing.name;
+    const description = typeof body.description === 'string' ? body.description.trim() : existing.description;
+    const visibility = body.visibility ?? existing.visibility;
+    const icon = body.icon === null || typeof body.icon === 'string' ? body.icon : existing.icon;
+
+    if (!name || name.length > 200) {
+      return NextResponse.json({ error: 'Project name must be between 1 and 200 characters' }, { status: 400 });
+    }
+    if ((description?.length ?? 0) > 1000) {
+      return NextResponse.json({ error: 'Description must be 1000 characters or fewer' }, { status: 400 });
+    }
+    if (visibility !== 'PUBLIC' && visibility !== 'PASSWORD') {
+      return NextResponse.json({ error: 'Visibility must be Public or Password' }, { status: 400 });
+    }
+
+    let slug = existing.slug;
+    if (typeof body.slug === 'string' && body.slug.trim()) {
+      slug = normalizeProjectSlug(body.slug);
+      if (!isValidProjectSlug(slug)) {
+        return NextResponse.json({ error: 'URL slug must contain only lowercase letters, numbers, and hyphens' }, { status: 400 });
+      }
+      const conflict = await prisma.project.findUnique({ where: { slug }, select: { id: true } });
+      if (conflict && conflict.id !== id) {
+        return NextResponse.json({ error: 'This URL slug is already in use' }, { status: 409 });
+      }
+    }
+
+    let password = visibility === 'PUBLIC' ? null : existing.password;
+    if (visibility === 'PASSWORD' && typeof body.password === 'string' && body.password) {
+      if (body.password.length < 4) {
+        return NextResponse.json({ error: 'Password must be at least 4 characters' }, { status: 400 });
+      }
+      password = await hashProjectPassword(body.password);
+    }
+    if (visibility === 'PASSWORD' && !password) {
+      return NextResponse.json({ error: 'Password is required for a password-protected project' }, { status: 400 });
+    }
+
+    const project = await prisma.project.update({
+      where: { id },
+      data: { name, slug, description, visibility, password, icon },
+    });
+    return NextResponse.json({ ...project, password: undefined, hasPassword: Boolean(project.password) });
+  } catch (error) {
+    console.error('PUT /api/projects/[id] error:', error);
+    return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,7 +133,7 @@ export async function DELETE(
     }
 
     // Delete upload directory
-    const uploadDir = path.join(process.cwd(), 'uploads', project.id);
+    const uploadDir = getProjectUploadDirectory(project.id);
     if (fs.existsSync(uploadDir)) {
       fs.rmSync(uploadDir, { recursive: true, force: true });
     }

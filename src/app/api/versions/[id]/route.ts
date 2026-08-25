@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import fs from 'fs';
-import path from 'path';
+import { getVersionUploadDirectory } from '@/lib/storage-paths';
 
 export async function POST(
   _req: NextRequest,
@@ -57,7 +57,7 @@ export async function DELETE(
     }
 
     // Delete upload directory for this version
-    const versionDir = path.join(process.cwd(), 'uploads', version.project.id, `v${version.number}`);
+    const versionDir = getVersionUploadDirectory(version.project.id, version.number);
     if (fs.existsSync(versionDir)) {
       fs.rmSync(versionDir, { recursive: true, force: true });
     }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { getVersionUploadDirectory } from '@/lib/storage-paths';
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,12 +42,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Save file
-    const versionDir = path.join(process.cwd(), 'uploads', projectId, `v${nextNumber}`);
+    const versionDir = getVersionUploadDirectory(projectId, nextNumber);
     if (!existsSync(versionDir)) {
       await mkdir(versionDir, { recursive: true });
     }
 
-    const fileName = file.name;
+    const fileName = path.basename(file.name);
+    if (!fileName || fileName === '.' || fileName === '..') {
+      return NextResponse.json({ error: 'Invalid file name' }, { status: 400 });
+    }
     const filePath = path.join(versionDir, fileName);
     const arrayBuffer = await file.arrayBuffer();
     await writeFile(filePath, Buffer.from(arrayBuffer));
