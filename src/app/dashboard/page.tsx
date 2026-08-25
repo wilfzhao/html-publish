@@ -415,9 +415,8 @@ export default function DashboardPage() {
                           {isFront ? (
                             <>
                               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex h-8 items-center justify-between gap-2 rounded-b-xl bg-gradient-to-t from-white/60 via-white/30 to-transparent px-2.5 text-gray-600 backdrop-blur-[1px]">
-                                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium">
+                                <span className="inline-flex items-center text-[10px] font-medium">
                                   <span className="rounded-md bg-indigo-50 px-1.5 py-0.5 font-semibold text-indigo-600">{version.label || `v${version.number}`}</span>
-                                  <span>Latest</span>
                                 </span>
                                 <span className="text-[10px] font-medium text-gray-400">
                                   {project.versions.length} {project.versions.length === 1 ? 'version' : 'versions'}
