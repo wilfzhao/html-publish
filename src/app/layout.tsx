@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from 'sonner';
+import IntroSplashWrapper from '@/components/intro/IntroSplashWrapper';
 
 export const metadata: Metadata = {
   title: 'Youchao - 承载灵感，原型有巢',
@@ -21,6 +22,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#4F46E5" />
       </head>
       <body className="font-sans antialiased">
+        <IntroSplashWrapper />
         {children}
         <Toaster position="top-right" richColors />
       </body>

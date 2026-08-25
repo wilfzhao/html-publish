@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getOrCreateDefaultUser } from '@/lib/default-user';
-import { hashProjectPassword } from '@/lib/project-access';
+import { hashProjectPassword, hasProjectAccess } from '@/lib/project-access';
 import { createUniqueProjectSlug, isValidProjectSlug, normalizeProjectSlug } from '@/lib/project-slug';
 
 export async function GET(req: NextRequest) {
@@ -30,8 +30,10 @@ export async function GET(req: NextRequest) {
         _count: { select: { versions: true, accessLogs: true } },
       },
     });
+    const isDetailRequest = Boolean(projectId || slug);
 
     const result = projects.map((p: any) => {
+      const locked = isDetailRequest && p.visibility === 'PASSWORD' && !!p.password && !hasProjectAccess(req, p.id, p.password);
       // 找到当前活跃版本
       const currentVersion = p.versions.find((v: any) => v.id === p.currentVersionId);
       const currentVersionNumber = currentVersion ? currentVersion.number : p._count?.versions || 0;
@@ -43,6 +45,7 @@ export async function GET(req: NextRequest) {
         description: p.description,
         visibility: p.visibility === 'INTERNAL' ? 'PUBLIC' : p.visibility,
         hasPassword: Boolean(p.password),
+        locked,
         icon: p.icon,
         currentVersionId: p.currentVersionId,
         currentVersionNumber,
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         accessCount: p._count?.accessLogs || 0,
-        versions: p.versions.map((v: any) => ({
+        versions: locked ? [] : p.versions.map((v: any) => ({
           id: v.id,
           number: v.number,
           label: v.label,

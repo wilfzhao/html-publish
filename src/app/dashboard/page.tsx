@@ -14,6 +14,7 @@ import {
   Loader2,
   Upload,
   ArrowUpRight,
+  LockKeyhole,
   Check,
   X,
 } from 'lucide-react';
@@ -26,6 +27,7 @@ interface Project {
   name: string;
   description: string;
   visibility: string;
+  hasPassword: boolean;
   currentVersionNumber: number;
   previewPath: string;
   createdAt: string;
@@ -240,10 +242,12 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredProjects = projects.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.description?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProjects = projects
+    .filter((p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.description?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <AppShell>
@@ -366,9 +370,20 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="mt-4">
-                  <h3 className="truncate text-lg font-bold tracking-[-0.02em] text-gray-900">
-                    {project.name}
-                  </h3>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <h3 className="truncate text-lg font-bold tracking-[-0.02em] text-gray-900">
+                      {project.name}
+                    </h3>
+                    {project.hasPassword && (
+                      <span
+                        className="inline-flex h-5 w-5 flex-none items-center justify-center rounded-full bg-amber-50 text-amber-500"
+                        title="进入项目需要密码"
+                        aria-label="进入项目需要密码"
+                      >
+                        <LockKeyhole className="h-3 w-3" aria-hidden="true" />
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1.5 text-[13px] font-normal leading-5 text-gray-400/90">
                     Updated {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
                   </p>

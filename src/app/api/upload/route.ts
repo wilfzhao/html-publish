@@ -4,6 +4,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { getVersionUploadDirectory } from '@/lib/storage-paths';
+import { hasProjectAccess } from '@/lib/project-access';
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,9 @@ export async function POST(req: NextRequest) {
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) {
+      return NextResponse.json({ error: 'Project password required' }, { status: 401 });
     }
 
     // Next version number

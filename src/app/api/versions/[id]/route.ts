@@ -2,19 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import fs from 'fs';
 import { getVersionUploadDirectory } from '@/lib/storage-paths';
+import { hasProjectAccess } from '@/lib/project-access';
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const version = await prisma.version.findUnique({
-      where: { id },
-    });
+    const version = await prisma.version.findUnique({ where: { id }, include: { project: true } });
 
     if (!version) {
       return NextResponse.json({ error: 'Version not found' }, { status: 404 });
+    }
+    if (version.project.visibility === 'PASSWORD' && version.project.password && !hasProjectAccess(req, version.project.id, version.project.password)) {
+      return NextResponse.json({ error: 'Project password required' }, { status: 401 });
     }
 
     // Update project current version
@@ -34,7 +36,7 @@ export async function POST(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -46,6 +48,9 @@ export async function DELETE(
 
     if (!version) {
       return NextResponse.json({ error: 'Version not found' }, { status: 404 });
+    }
+    if (version.project.visibility === 'PASSWORD' && version.project.password && !hasProjectAccess(req, version.project.id, version.project.password)) {
+      return NextResponse.json({ error: 'Project password required' }, { status: 401 });
     }
 
     // Prevent deleting the current (active) version

@@ -1,6 +1,6 @@
 {
   "name": "@youchao/html-publish-cli",
-  "version": "0.1.9",
+  "version": "0.1.15",
   "description": "Publish static HTML prototypes to HTML Publish",
   "type": "module",
   "bin": {

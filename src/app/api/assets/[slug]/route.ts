@@ -3,7 +3,6 @@ import { prisma } from '@/lib/db';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { getVersionUploadDirectory } from '@/lib/storage-paths';
-import { hasProjectAccess } from '@/lib/project-access';
 
 const CONTENT_TYPES: Record<string, string> = {
   html: 'text/html', htm: 'text/html', css: 'text/css',
@@ -37,10 +36,6 @@ export async function GET(
     if (!project) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const numericVersion = versionStr ? Number.parseInt(versionStr, 10) : null;
     const selectedVersion = versionStr
       ? project.versions.find((version) => version.number === numericVersion)

@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { DEFAULT_PROJECT_EMOJI, PROJECT_EMOJIS } from '@/lib/project-emojis';
 import { copyTextToClipboard } from '@/lib/client-clipboard';
 import { normalizeProjectSlug } from '@/lib/project-slug';
+import ManagementPasswordGate from './management-password-gate';
 
 async function copyWithFeedback(value: string, successMessage = 'Copied!') {
   if (await copyTextToClipboard(value)) {
@@ -165,6 +166,10 @@ export default function ProjectDetailPage() {
         </div>
       </AppShell>
     );
+  }
+
+  if (project.locked) {
+    return <ManagementPasswordGate slug={project.slug} projectName={project.name} />;
   }
 
   const currentVersion = project.currentVersionId

@@ -16,10 +16,10 @@ export default function IntroSplashWrapper() {
   const [showIntro, setShowIntro] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // The intro is the root-route landing experience. It must never cover an
-    // application page merely because browser storage was cleared or the app
-    // is being accessed from a new origin after a deployment.
-    if (pathname !== '/') {
+    // The root and dashboard are system entry points. A first-time visitor
+    // sees onboarding from either entry; other routes (shared prototypes,
+    // device connection, etc.) must never be covered by it.
+    if (pathname !== '/' && pathname !== '/dashboard') {
       setShowIntro(false);
       return;
     }
@@ -27,7 +27,7 @@ export default function IntroSplashWrapper() {
     // Read from localStorage on mount — prevents flash for returning users
     const hasSeen = localStorage.getItem('hasSeenYouchaoIntro') === 'true';
     if (hasSeen) {
-      router.replace('/dashboard');
+      setShowIntro(false);
       return;
     }
 

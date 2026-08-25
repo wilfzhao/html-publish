@@ -13,7 +13,7 @@ const CLI_VERSION = JSON.parse(
   await readFile(new URL('../package.json', import.meta.url), 'utf8'),
 ).version;
 const CONFIG_NAME = '.html-publish.json';
-const DEFAULT_SERVER = process.env.HTML_PUBLISH_SERVER || 'http://localhost:8088';
+const PACKAGED_SERVER = '';
 const IGNORE = ['.git/**', 'node_modules/**', '.next/**', '.env', '.env.*', '*.pem', '*.key', CONFIG_NAME];
 
 function usage() {
@@ -29,7 +29,7 @@ Usage:
   html-publish status DEPLOYMENT_ID
 
 Environment:
-  HTML_PUBLISH_SERVER  Override the server URL
+  HTML_PUBLISH_SERVER  Override the installed server URL
   HTML_PUBLISH_TOKEN   Use a token without storing it`);
 }
 
@@ -56,7 +56,13 @@ function credentialPath() {
 }
 
 function normalizeServer(value) {
-  return String(value || DEFAULT_SERVER).replace(/\/+$/, '');
+  const server = String(value || '').trim().replace(/\/+$/, '');
+  if (!server) {
+    throw new Error(
+      'No HTML Publish server configured. Pass --server URL or set HTML_PUBLISH_SERVER.',
+    );
+  }
+  return server;
 }
 
 async function readStoredCredentials() {
@@ -69,9 +75,12 @@ async function readStoredCredentials() {
   }
 }
 
-async function readEnvironmentCredentials() {
+async function readEnvironmentCredentials(serverOverride) {
   if (process.env.HTML_PUBLISH_TOKEN) {
-    return { server: normalizeServer(process.env.HTML_PUBLISH_SERVER), token: process.env.HTML_PUBLISH_TOKEN };
+    return {
+      server: normalizeServer(serverOverride || process.env.HTML_PUBLISH_SERVER || PACKAGED_SERVER),
+      token: process.env.HTML_PUBLISH_TOKEN,
+    };
   }
   return null;
 }
@@ -144,11 +153,18 @@ async function deviceLogin(server, projectHint) {
 }
 
 async function ensureCredentials(serverOverride, projectHint) {
-  const environmentCredentials = await readEnvironmentCredentials();
+  const environmentCredentials = await readEnvironmentCredentials(serverOverride);
   if (environmentCredentials) return environmentCredentials;
 
   const stored = await readStoredCredentials();
-  const server = normalizeServer(serverOverride);
+  const configuredServer = serverOverride || process.env.HTML_PUBLISH_SERVER || PACKAGED_SERVER;
+  const storedServers = [...new Set(stored
+    .map((item) => item?.server)
+    .filter(Boolean)
+    .map(normalizeServer))];
+  const server = normalizeServer(
+    configuredServer || (storedServers.length === 1 ? storedServers[0] : ''),
+  );
   const normalizedHint = String(projectHint || '').trim().toLowerCase();
   const current = stored.find((item) => {
     if (!item?.token || normalizeServer(item.server) !== server) return false;
@@ -263,7 +279,7 @@ async function inspect(configRecord) {
 }
 
 async function commandLogin(flags) {
-  const server = normalizeServer(flags.server);
+  const server = normalizeServer(flags.server || process.env.HTML_PUBLISH_SERVER || PACKAGED_SERVER);
   const token = flags.token || process.env.HTML_PUBLISH_TOKEN;
   if (token) {
     if (!String(token).startsWith('hp_')) throw new Error('Invalid token format. Expected a token beginning with hp_.');

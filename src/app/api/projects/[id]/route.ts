@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import fs from 'fs';
 import { getProjectUploadDirectory } from '@/lib/storage-paths';
-import { hashProjectPassword } from '@/lib/project-access';
+import { hashProjectPassword, hasProjectAccess } from '@/lib/project-access';
 import { isValidProjectSlug, normalizeProjectSlug } from '@/lib/project-slug';
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -26,6 +26,9 @@ export async function GET(
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) {
+      return NextResponse.json({ error: 'Project password required' }, { status: 401 });
     }
 
     return NextResponse.json({
@@ -65,6 +68,9 @@ export async function PUT(
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (existing.visibility === 'PASSWORD' && existing.password && !hasProjectAccess(req, existing.id, existing.password)) {
+      return NextResponse.json({ error: 'Project password required' }, { status: 401 });
     }
 
     const body = await req.json();
@@ -118,7 +124,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -130,6 +136,9 @@ export async function DELETE(
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) {
+      return NextResponse.json({ error: 'Project password required' }, { status: 401 });
     }
 
     // Delete upload directory

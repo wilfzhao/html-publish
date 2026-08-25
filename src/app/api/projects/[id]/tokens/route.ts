@@ -2,9 +2,13 @@ import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { hashApiToken, TOKEN_PREFIX } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
+import { hasProjectAccess } from '@/lib/project-access';
 
-export async function GET(_req: NextRequest, { params }: RouteContext<'/api/projects/[id]/tokens'>) {
+export async function GET(req: NextRequest, { params }: RouteContext<'/api/projects/[id]/tokens'>) {
   const { id } = await params;
+  const project = await prisma.project.findUnique({ where: { id } });
+  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) return NextResponse.json({ error: 'Project password required' }, { status: 401 });
   const items = await prisma.apiToken.findMany({ where: { projectId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, name: true, tokenPrefix: true, scopes: true, expiresAt: true, lastUsedAt: true, revokedAt: true, createdAt: true } });
   return NextResponse.json({ items });
 }
@@ -12,6 +16,7 @@ export async function POST(req: NextRequest, { params }: RouteContext<'/api/proj
   const { id } = await params;
   const project = await prisma.project.findUnique({ where: { id } });
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) return NextResponse.json({ error: 'Project password required' }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim().slice(0, 100) : 'AI Publish';
   const days = Math.min(Math.max(Number(body.expiresInDays) || 90, 1), 365);

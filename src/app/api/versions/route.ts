@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { hasProjectAccess } from '@/lib/project-access';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,6 +9,11 @@ export async function POST(req: NextRequest) {
 
     if (!projectId) {
       return NextResponse.json({ error: 'projectId required' }, { status: 400 });
+    }
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    if (project.visibility === 'PASSWORD' && project.password && !hasProjectAccess(req, project.id, project.password)) {
+      return NextResponse.json({ error: 'Project password required' }, { status: 401 });
     }
 
     // Get next version number

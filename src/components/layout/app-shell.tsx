@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  CircleHelp,
   LayoutGrid,
-  FolderOpen,
-  Settings,
+  Megaphone,
 } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -40,6 +40,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid, primary: false },
+  ];
+
+  const secondaryNavItems = [
+    { href: '/help', label: '使用帮助', icon: CircleHelp, primary: false },
+    { href: '/changelog', label: '发布日志', icon: Megaphone, primary: false },
   ];
 
   const isActive = (href: string) => {
@@ -94,6 +99,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
                 onClick={() => setMobileOpen(false)}
+              >
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {sidebarOpen && <span className="text-sm">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <nav className="p-3 pt-0 space-y-1">
+          {secondaryNavItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-lg transition-all ${
+                  sidebarOpen ? 'px-3 py-2.5' : 'justify-center px-2 py-2.5'
+                } ${
+                  active
+                    ? 'bg-indigo-50 text-indigo-600 font-medium'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
+                onClick={() => setMobileOpen(false)}
+                title={sidebarOpen ? undefined : item.label}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
                 {sidebarOpen && <span className="text-sm">{item.label}</span>}
