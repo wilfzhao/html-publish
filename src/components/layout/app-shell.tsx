@@ -9,7 +9,7 @@ import {
   Megaphone,
 } from 'lucide-react';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, hideSidebar = false }: { children: React.ReactNode; hideSidebar?: boolean }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Mobile overlay */}
-      {mobileOpen && (
+      {!hideSidebar && mobileOpen && (
         <div
           className="fixed inset-0 bg-black/20 z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Sidebar */}
-      <aside
+      {!hideSidebar && <aside
         className={`fixed md:relative z-50 md:z-auto flex flex-col bg-white border-r border-gray-100 transition-all duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {displayVersion}
           </div>
         </div>
-      </aside>
+      </aside>}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">

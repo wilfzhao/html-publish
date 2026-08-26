@@ -3,9 +3,11 @@ import { prisma } from '@/lib/db';
 import { getOrCreateDefaultUser } from '@/lib/default-user';
 import { hashProjectPassword, hasProjectAccess } from '@/lib/project-access';
 import { createUniqueProjectSlug, isValidProjectSlug, normalizeProjectSlug } from '@/lib/project-slug';
+import { getPublicBaseUrl } from '@/lib/public-url';
 
 export async function GET(req: NextRequest) {
   try {
+    const publicBaseUrl = getPublicBaseUrl(req);
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug');
     const projectId = searchParams.get('id');
@@ -50,6 +52,7 @@ export async function GET(req: NextRequest) {
         currentVersionId: p.currentVersionId,
         currentVersionNumber,
         previewPath: `/p/${p.slug}`,
+        previewUrl: `${publicBaseUrl}/p/${encodeURIComponent(p.slug)}`,
         coverUrl: p.currentVersionId
           ? `/api/covers/${encodeURIComponent(p.slug)}?v=${currentVersionNumber}`
           : null,
@@ -132,7 +135,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ ...project, previewPath: `/p/${project.slug}` });
+    return NextResponse.json({
+      ...project,
+      previewPath: `/p/${project.slug}`,
+      previewUrl: `${getPublicBaseUrl(req)}/p/${encodeURIComponent(project.slug)}`,
+    });
   } catch (error) {
     console.error('POST /api/projects error:', error);
     return NextResponse.json(

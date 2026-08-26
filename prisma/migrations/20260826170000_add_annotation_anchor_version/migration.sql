@@ -1,0 +1,1 @@
+ALTER TABLE "UiAnnotation" ADD COLUMN "anchorVersion" INTEGER NOT NULL DEFAULT 1;

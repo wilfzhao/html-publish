@@ -24,12 +24,14 @@ import {
   Plus,
   Upload,
   X,
+  Paintbrush,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DEFAULT_PROJECT_EMOJI, PROJECT_EMOJIS } from '@/lib/project-emojis';
 import { copyTextToClipboard } from '@/lib/client-clipboard';
 import { normalizeProjectSlug } from '@/lib/project-slug';
 import ManagementPasswordGate from './management-password-gate';
+import { PrototypeAnnotations } from '@/components/annotations/prototype-annotations';
 
 async function copyWithFeedback(value: string, successMessage = 'Copied!') {
   if (await copyTextToClipboard(value)) {
@@ -94,6 +96,7 @@ export default function ProjectDetailPage() {
   });
   const [copied, setCopied] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'phone'>('desktop');
+  const [annotationMode, setAnnotationMode] = useState(false);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -132,8 +135,9 @@ export default function ProjectDetailPage() {
   }, [fetchProject]);
 
   const handleCopyLink = async (version?: number) => {
-    if (!project?.previewPath) return;
-    const link = `${window.location.origin}${project.previewPath}${version ? `/v/${version}` : ''}`;
+    if (!project?.previewUrl && !project?.previewPath) return;
+    const publicPreviewUrl = project.previewUrl || `${window.location.origin}${project.previewPath}`;
+    const link = `${publicPreviewUrl}${version ? `/v/${version}` : ''}`;
     if (!(await copyWithFeedback(link, 'Link copied to clipboard'))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -141,7 +145,7 @@ export default function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <AppShell>
+      <AppShell hideSidebar>
         <div className="p-6 flex items-center justify-center h-full">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -154,7 +158,7 @@ export default function ProjectDetailPage() {
 
   if (!project) {
     return (
-      <AppShell>
+      <AppShell hideSidebar>
         <div className="p-6 flex items-center justify-center h-full">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Project not found</h3>
@@ -176,8 +180,7 @@ export default function ProjectDetailPage() {
     ? project.versions?.find((v: any) => v.id === project.currentVersionId)
     : project.versions?.[0];
   const latestVersion = project.versions?.[0];
-  const baseUrl = window.location.origin;
-  const shareUrl = `${baseUrl}${project.previewPath}`;
+  const shareUrl = project.previewUrl || `${window.location.origin}${project.previewPath}`;
   const versionShareUrl = currentVersion
     ? `${shareUrl}/v/${encodeURIComponent(currentVersion.label || String(currentVersion.number))}`
     : shareUrl;
@@ -219,7 +222,7 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <AppShell>
+    <AppShell hideSidebar>
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="px-6 lg:px-8 py-4 border-b border-gray-100 bg-white flex-shrink-0">
@@ -301,6 +304,17 @@ export default function ProjectDetailPage() {
 
                 <div className="w-px h-6 bg-gray-200" />
 
+                {currentVersion && (
+                  <button
+                    onClick={() => setAnnotationMode((value) => !value)}
+                    className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${annotationMode ? 'bg-violet-100 text-violet-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                    title="标出需要 UI 出高保真的区域"
+                  >
+                    <Paintbrush className="w-3.5 h-3.5" />
+                    UI 标注
+                  </button>
+                )}
+
                 <button
                   onClick={() => handleCopyLink()}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100"
@@ -322,6 +336,24 @@ export default function ProjectDetailPage() {
 
               {/* Preview iframe */}
               {currentVersion ? (
+                annotationMode ? (
+                  <div className="flex-1 min-h-0">
+                    <PrototypeAnnotations
+                      projectId={project.id}
+                      versionId={currentVersion.id}
+                      iframeSrc={`/api/proxy/${project.slug}?v=${encodeURIComponent(currentVersion.label || String(currentVersion.number))}`}
+                      mode="edit"
+                      shareUrl={versionShareUrl}
+                      deviceClassName={
+                        previewDevice === 'desktop'
+                          ? 'w-full max-w-7xl h-full rounded-xl'
+                          : previewDevice === 'tablet'
+                          ? 'w-[768px] h-[600px] rounded-xl'
+                          : 'w-[375px] h-[667px] rounded-[2rem]'
+                      }
+                    />
+                  </div>
+                ) : (
                 <div className="flex-1 bg-gray-50 overflow-auto flex items-center justify-center p-3">
                   <div
                     className={`bg-white shadow-sm transition-all duration-300 overflow-hidden ${
@@ -341,6 +373,7 @@ export default function ProjectDetailPage() {
                     />
                   </div>
                 </div>
+                )
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
@@ -445,7 +478,7 @@ export default function ProjectDetailPage() {
                                   <Eye className="w-4 h-4 group-hover:text-cyan-600" />
                                 </button>
                                 <button
-                                  onClick={() => copyWithFeedback(`${window.location.origin}${project.previewPath}/v/${encodeURIComponent(v.label || String(v.number))}`, 'Link copied!')}
+                                  onClick={() => copyWithFeedback(`${shareUrl}/v/${encodeURIComponent(v.label || String(v.number))}`, 'Link copied!')}
                                   className="group p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-gray-100"
                                   title="Copy link to this version"
                                 >
@@ -506,6 +539,7 @@ export default function ProjectDetailPage() {
 }
 
 function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: () => void; onDelete: () => void }) {
+  const shareUrl = project.previewUrl || `${window.location.origin}${project.previewPath}`;
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [slug, setSlug] = useState(project.slug);
@@ -606,13 +640,13 @@ function SettingsTab({ project, onUpdate, onDelete }: { project: any; onUpdate: 
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={`${window.location.origin}${project.previewPath}`}
+                  value={shareUrl}
                   readOnly
                   className="input font-mono text-sm"
                 />
                 <button
                   type="button"
-                  onClick={() => copyWithFeedback(`${window.location.origin}${project.previewPath}`)}
+                  onClick={() => copyWithFeedback(shareUrl)}
                   className="btn-secondary text-xs py-1.5"
                 >
                   Copy
