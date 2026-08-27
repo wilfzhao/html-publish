@@ -8,6 +8,10 @@ import { copyTextToClipboard } from '@/lib/client-clipboard';
 type Annotation = {
   id: string;
   selector: string | null;
+  leftSelector: string | null;
+  rightSelector: string | null;
+  leftOffset: number | null;
+  rightOffset: number | null;
   anchorRelative: boolean;
   anchorVersion: number;
   pagePath: string;
@@ -20,7 +24,7 @@ type Annotation = {
 };
 
 type Marker = Annotation & { left: number; top: number; markerWidth: number; markerHeight: number; ordinal: number };
-type InteractionStep = { selector: string; text: string };
+type InteractionStep = { selector: string; text: string; kind?: 'navigation' | 'action' };
 
 function elementSelector(element: Element) {
   if (element.id) return `#${CSS.escape(element.id)}`;
@@ -81,6 +85,70 @@ function isVisible(element: Element, win: Window) {
   return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
 }
 
+function preferredClickTarget(target: Element, win: Window) {
+  const actionable = target.closest('input, button, select, textarea, a, [role="button"], [role="tab"], [role="menuitem"]');
+  if (actionable) return actionable;
+
+  const targetRect = target.getBoundingClientRect();
+  const viewportArea = Math.max(win.innerWidth * win.innerHeight, 1);
+  let fallback: Element | null = null;
+  let current: Element | null = target;
+  while (current && current.tagName.toLowerCase() !== 'body') {
+    const rect = current.getBoundingClientRect();
+    const area = rect.width * rect.height;
+    if (rect.width >= 16 && rect.height >= 12 && area <= viewportArea * 0.92) {
+      const role = current.getAttribute('role') || '';
+      const classTokens = (current.getAttribute('class') || '').toLowerCase().split(/\s+/);
+      const tag = current.tagName.toLowerCase();
+      const preciseText = [
+        'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'label', 'li', 'dt', 'dd',
+        'legend', 'figcaption', 'strong', 'small', 'code', 'span',
+      ].includes(tag) && rect.width >= 24;
+      const meaningfulSubregion = classTokens.some((token) => (
+        /(^|[-_])(header|footer|head|foot|body|content|title|subtitle|description|text|label|legend|axis|series|bar|row)([-_]|$)/.test(token)
+      ));
+      if (preciseText || meaningfulSubregion) return current;
+      const meaningfulClass = classTokens.some((token) => (
+        token === 'modal'
+        || token === 'dialog'
+        || token.endsWith('-modal')
+        || token.endsWith('_modal')
+        || token === 'card'
+        || token.endsWith('-card')
+        || token.endsWith('_card')
+        || token === 'chart'
+        || token.endsWith('-chart')
+        || token.endsWith('_chart')
+        || token === 'graph'
+        || token === 'plot'
+        || token === 'panel'
+        || token.endsWith('-panel')
+      ));
+      if (
+        rect.width >= 64
+        && rect.height >= 40
+        && (meaningfulClass
+          || ['dialog', 'region', 'group'].includes(role)
+          || ['section', 'article', 'figure', 'table', 'canvas'].includes(tag))
+      ) return current;
+      if (!fallback && rect.width >= targetRect.width * 2 && rect.height >= targetRect.height * 2) fallback = current;
+    }
+    current = current.parentElement;
+  }
+  return fallback || target;
+}
+
+function findHorizontalAnchor(doc: Document, startX: number, y: number, direction: 1 | -1, maxDistance: number) {
+  for (let distance = 2; distance <= maxDistance; distance += 4) {
+    const hit = doc.elementFromPoint(startX + distance * direction, y);
+    if (!hit) continue;
+    const preferred = hit.closest('input, button, select, textarea, a, [role="button"], [role="tab"]') || hit;
+    const rect = preferred.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0 && rect.width <= maxDistance * 2.5) return preferred;
+  }
+  return null;
+}
+
 export function PrototypeAnnotations({
   projectId,
   versionId,
@@ -105,13 +173,22 @@ export function PrototypeAnnotations({
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Annotation | null>(null);
-  const [draft, setDraft] = useState<{ selector: string | null; anchorRelative: boolean; anchorVersion: number; x: number; y: number; width: number; height: number; pagePath: string } | null>(null);
+  const [draft, setDraft] = useState<{ selector: string | null; leftSelector?: string | null; rightSelector?: string | null; leftOffset?: number | null; rightOffset?: number | null; anchorRelative: boolean; anchorVersion: number; x: number; y: number; width: number; height: number; pagePath: string } | null>(null);
   const [dragBox, setDragBox] = useState<{ startX: number; startY: number; x: number; y: number; width: number; height: number } | null>(null);
   const [draftHighlight, setDraftHighlight] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const [requirement, setRequirement] = useState('');
   const [saving, setSaving] = useState(false);
   const [panelOpen, setPanelOpen] = useState(initialPanelOpen);
   const [annotationViewEnabled, setAnnotationViewEnabled] = useState(mode === 'edit' || initialPanelOpen);
+
+  const cancelEmptyDraft = useCallback(() => {
+    if (!draft || requirement.trim()) return;
+    setDraft(null);
+    setDraftHighlight(null);
+    setDragBox(null);
+    setSelecting(false);
+    setRequirement('');
+  }, [draft, requirement]);
 
   const loadAnnotations = useCallback(async () => {
     const response = await fetch(`/api/ui-annotations?versionId=${encodeURIComponent(versionId)}`);
@@ -125,29 +202,41 @@ export function PrototypeAnnotations({
     const wrap = frameWrapRef.current;
     if (!frame?.contentDocument || !frame.contentWindow || !wrap) return;
     const doc = frame.contentDocument;
+    const documentElement = doc.documentElement;
+    if (!documentElement) return;
     const pagePath = framePageState(frame.contentWindow).key;
     const frameRect = frame.getBoundingClientRect();
     const wrapRect = wrap.getBoundingClientRect();
-    const docWidth = Math.max(doc.documentElement.scrollWidth, 1);
-    const docHeight = Math.max(doc.documentElement.scrollHeight, 1);
+    const docWidth = Math.max(documentElement.scrollWidth, 1);
+    const docHeight = Math.max(documentElement.scrollHeight, 1);
     setMarkers(annotations.flatMap((item, annotationIndex) => {
       if (decodePageState(item.pagePath).key !== pagePath) return [];
       const target = item.selector ? doc.querySelector(item.selector) : null;
       if (target && isVisible(target, frame.contentWindow!)) {
         const targetRect = target.getBoundingClientRect();
         if (item.anchorRelative) {
-          const markerTop = item.anchorVersion === 3
+          const markerTop = item.anchorVersion >= 3
             ? targetRect.top + item.y
             : targetRect.top + item.y * (item.anchorVersion === 2 ? targetRect.width : targetRect.height);
-          const markerHeight = item.anchorVersion === 3
+          const markerHeight = item.anchorVersion >= 3
             ? item.height
             : item.height * (item.anchorVersion === 2 ? targetRect.width : targetRect.height);
+          const leftAnchor = item.anchorVersion === 4 && item.leftSelector ? doc.querySelector(item.leftSelector) : null;
+          const rightAnchor = item.anchorVersion === 4 && item.rightSelector ? doc.querySelector(item.rightSelector) : null;
+          const leftAnchorRect = leftAnchor && isVisible(leftAnchor, frame.contentWindow!) ? leftAnchor.getBoundingClientRect() : null;
+          const rightAnchorRect = rightAnchor && isVisible(rightAnchor, frame.contentWindow!) ? rightAnchor.getBoundingClientRect() : null;
+          const markerLeft = leftAnchorRect && item.leftOffset !== null
+            ? leftAnchorRect.left + item.leftOffset
+            : targetRect.left + item.x * targetRect.width;
+          const markerRight = rightAnchorRect && item.rightOffset !== null
+            ? rightAnchorRect.right + item.rightOffset
+            : markerLeft + item.width * targetRect.width;
           return [{
             ...item,
             ordinal: annotationIndex + 1,
-            left: frameRect.left - wrapRect.left + targetRect.left + item.x * targetRect.width,
+            left: frameRect.left - wrapRect.left + markerLeft,
             top: frameRect.top - wrapRect.top + markerTop,
-            markerWidth: item.width * targetRect.width,
+            markerWidth: Math.max(markerRight - markerLeft, 1),
             markerHeight,
           }];
         }
@@ -175,11 +264,14 @@ export function PrototypeAnnotations({
   const attachFrameListeners = useCallback(() => {
     const frame = iframeRef.current;
     const win = frame?.contentWindow;
-    if (!frame || !win || !frame.contentDocument) return;
+    const doc = frame?.contentDocument;
+    if (!frame || !win || !doc?.body) return;
     const onScroll = () => updateMarkers();
     const clearHighlight = () => {
+      cancelEmptyDraft();
       setSelected(null);
       window.setTimeout(updateMarkers, 0);
+      window.setTimeout(updateMarkers, 350);
     };
     const recordInteraction = (event: MouseEvent) => {
       if (mode !== 'edit') return;
@@ -189,34 +281,31 @@ export function PrototypeAnnotations({
       const step = {
         selector: elementSelector(actionable),
         text: (actionable.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 100),
+        kind: actionable.closest('nav, aside') ? 'navigation' as const : 'action' as const,
       };
       const trail = interactionTrailRef.current;
       const previous = trail[trail.length - 1];
       if (previous?.selector === step.selector && previous.text === step.text) return;
-      interactionTrailRef.current = [...trail, step].slice(-20);
+      interactionTrailRef.current = step.kind === 'navigation'
+        ? [step]
+        : [...trail, step].slice(-20);
     };
     win.addEventListener('scroll', onScroll, { passive: true });
     win.addEventListener('resize', onScroll);
     win.addEventListener('hashchange', clearHighlight);
     win.addEventListener('popstate', clearHighlight);
-    frame.contentDocument.addEventListener('pointerdown', clearHighlight, true);
-    frame.contentDocument.addEventListener('click', recordInteraction, true);
-    const observer = new MutationObserver(() => {
-      setSelected(null);
-      updateMarkers();
-    });
-    observer.observe(frame.contentDocument.body, { attributes: true, childList: true, subtree: true });
+    doc.addEventListener('pointerdown', clearHighlight, true);
+    doc.addEventListener('click', recordInteraction, true);
     updateMarkers();
     return () => {
       win.removeEventListener('scroll', onScroll);
       win.removeEventListener('resize', onScroll);
       win.removeEventListener('hashchange', clearHighlight);
       win.removeEventListener('popstate', clearHighlight);
-      frame.contentDocument?.removeEventListener('pointerdown', clearHighlight, true);
-      frame.contentDocument?.removeEventListener('click', recordInteraction, true);
-      observer.disconnect();
+      doc.removeEventListener('pointerdown', clearHighlight, true);
+      doc.removeEventListener('click', recordInteraction, true);
     };
-  }, [mode, updateMarkers]);
+  }, [cancelEmptyDraft, mode, updateMarkers]);
 
   useEffect(() => {
     const cleanup = attachFrameListeners();
@@ -274,7 +363,8 @@ export function PrototypeAnnotations({
     const docHeight = Math.max(doc.documentElement.scrollHeight, layerRect.height, 1);
     const isClick = dragBox.width < 8 && dragBox.height < 8;
     if (isClick) {
-      const target = doc.elementFromPoint(dragBox.startX, dragBox.startY);
+      const hit = doc.elementFromPoint(dragBox.startX, dragBox.startY);
+      const target = hit ? preferredClickTarget(hit, win) : null;
       const targetRect = target?.getBoundingClientRect();
       if (!target || !targetRect || targetRect.width <= 0 || targetRect.height <= 0) {
         setDragBox(null);
@@ -315,10 +405,20 @@ export function PrototypeAnnotations({
     }
     const anchorRect = anchor?.getBoundingClientRect();
     const anchorRelative = Boolean(anchor && anchorRect && anchorRect.width > 0 && anchorRect.height > 0);
+    const middleY = dragBox.y + dragBox.height / 2;
+    const edgeSearchDistance = Math.min(Math.max(dragBox.width / 2, 24), 160);
+    const leftAnchor = findHorizontalAnchor(doc, dragBox.x, middleY, 1, edgeSearchDistance);
+    const rightAnchor = findHorizontalAnchor(doc, dragBox.x + dragBox.width, middleY, -1, edgeSearchDistance);
+    const leftAnchorRect = leftAnchor?.getBoundingClientRect();
+    const rightAnchorRect = rightAnchor?.getBoundingClientRect();
     setDraft({
       selector: anchor ? elementSelector(anchor) : null,
+      leftSelector: leftAnchor ? elementSelector(leftAnchor) : null,
+      rightSelector: rightAnchor ? elementSelector(rightAnchor) : null,
+      leftOffset: leftAnchorRect ? dragBox.x - leftAnchorRect.left : null,
+      rightOffset: rightAnchorRect ? dragBox.x + dragBox.width - rightAnchorRect.right : null,
       anchorRelative,
-      anchorVersion: 3,
+      anchorVersion: 4,
       pagePath: encodePageState(win, interactionTrailRef.current),
       x: anchorRelative ? (dragBox.x - anchorRect!.left) / anchorRect!.width : (dragBox.x + win.scrollX) / docWidth,
       y: anchorRelative ? dragBox.y - anchorRect!.top : (dragBox.y + win.scrollY) / docHeight,
@@ -380,7 +480,39 @@ export function PrototypeAnnotations({
     return true;
   };
 
+  const dismissTransientUi = async (win: Window) => {
+    const layerSelector = [
+      '[role="dialog"]',
+      '[aria-modal="true"]',
+      '.modal-backdrop',
+      '.inline-modal',
+      '.el-dialog__wrapper',
+      '.ant-modal-wrap',
+      '[class*="modal"][class*="overlay"]',
+      '[class*="dialog"][class*="wrapper"]',
+    ].join(', ');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const layers = Array.from(win.document.querySelectorAll(layerSelector)).filter((element) => isVisible(element, win));
+      const layer = layers[layers.length - 1];
+      if (!layer) return;
+      const controls = Array.from(layer.querySelectorAll('button, [role="button"], [aria-label], [title], .close, [class*="close"]'));
+      const closeControl = controls.find((element) => {
+        if (!isVisible(element, win)) return false;
+        const label = [
+          element.getAttribute('aria-label'),
+          element.getAttribute('title'),
+          element.textContent,
+        ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        return /^(关闭|取消|close|cancel|×|✕)$/i.test(label) || /(^|[-_ ])close($|[-_ ])/i.test(element.className || '');
+      }) as HTMLElement | undefined;
+      if (closeControl) closeControl.click();
+      else win.document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+      await new Promise((resolve) => window.setTimeout(resolve, 160));
+    }
+  };
+
   const locate = async (item: Annotation) => {
+    cancelEmptyDraft();
     if (selected?.id === item.id) {
       setSelected(null);
       return;
@@ -390,7 +522,40 @@ export function PrototypeAnnotations({
     const targetState = decodePageState(item.pagePath);
     if (targetState.key !== framePageState(win).key) {
       setSelected(null);
+      await dismissTransientUi(win);
       const doc = win.document;
+      if (targetState.key === framePageState(win).key) {
+        setSelected(item);
+        const target = item.selector ? doc.querySelector(item.selector) : null;
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        updateMarkers();
+        return;
+      }
+      const navigationTarget = targetState.navigationText
+        ? Array.from(doc.querySelectorAll('a, button, [role="tab"], [role="menuitem"]')).find((element) => (
+          isVisible(element, win)
+          && (element.textContent || '').replace(/\s+/g, ' ').trim() === targetState.navigationText
+        )) as HTMLElement | undefined
+        : undefined;
+      if (navigationTarget) {
+        const lastNavigationIndex = targetState.interactionTrail.reduce((lastIndex, step, index) => {
+          if (step.kind === 'navigation') return index;
+          const recordedTarget = doc.querySelector(step.selector);
+          return recordedTarget?.closest('nav, aside') ? index : lastIndex;
+        }, -1);
+        const followUpSteps = targetState.interactionTrail.slice(lastNavigationIndex + 1);
+        navigationTarget.click();
+        toast.info(`正在前往「${targetState.navigationText}」`);
+        await new Promise((resolve) => window.setTimeout(resolve, 260));
+        const followedUp = followUpSteps.length === 0 || await replayInteractionTrail(win, followUpSteps);
+        if (followedUp && targetState.key === framePageState(win).key) {
+          setSelected(item);
+          const target = item.selector ? doc.querySelector(item.selector) : null;
+          target?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          updateMarkers();
+          return;
+        }
+      }
       if (targetState.interactionTrail.length > 0) {
         toast.info('正在进入标注所在位置');
         const replayed = await replayInteractionTrail(win, targetState.interactionTrail);
@@ -401,24 +566,6 @@ export function PrototypeAnnotations({
           updateMarkers();
           return;
         }
-      }
-      const navigationTarget = targetState.navigationText
-        ? Array.from(doc.querySelectorAll('a, button, [role="tab"], [role="menuitem"]')).find((element) => (
-          isVisible(element, win)
-          && (element.textContent || '').replace(/\s+/g, ' ').trim() === targetState.navigationText
-        )) as HTMLElement | undefined
-        : undefined;
-      if (navigationTarget) {
-        navigationTarget.click();
-        toast.info(`正在前往「${targetState.navigationText}」`);
-        window.setTimeout(() => {
-          if (targetState.key !== framePageState(win).key) return;
-          setSelected(item);
-          const target = item.selector ? doc.querySelector(item.selector) : null;
-          target?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-          updateMarkers();
-        }, 350);
-        return;
       }
       if (targetState.path && targetState.path !== `${win.location.pathname}${win.location.search}${win.location.hash}`) {
         win.location.assign(targetState.path);

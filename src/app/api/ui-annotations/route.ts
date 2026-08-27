@@ -9,6 +9,10 @@ function serialize(annotation: any) {
     versionId: annotation.versionId,
     pagePath: annotation.pagePath,
     selector: annotation.selector,
+    leftSelector: annotation.leftSelector,
+    rightSelector: annotation.rightSelector,
+    leftOffset: annotation.leftOffset,
+    rightOffset: annotation.rightOffset,
     anchorRelative: annotation.anchorRelative,
     anchorVersion: annotation.anchorVersion,
     x: annotation.x,
@@ -34,7 +38,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { projectId, versionId, pagePath, selector, anchorRelative, anchorVersion, x, y, width, height, requirement, keep } = body;
+  const { projectId, versionId, pagePath, selector, leftSelector, rightSelector, leftOffset, rightOffset, anchorRelative, anchorVersion, x, y, width, height, requirement, keep } = body;
   if (!projectId || !versionId || !String(requirement || '').trim()) {
     return NextResponse.json({ error: 'projectId, versionId and requirement required' }, { status: 400 });
   }
@@ -52,8 +56,12 @@ export async function POST(req: NextRequest) {
       versionId,
       pagePath: typeof pagePath === 'string' ? pagePath : '/',
       selector: typeof selector === 'string' ? selector : null,
+      leftSelector: typeof leftSelector === 'string' ? leftSelector : null,
+      rightSelector: typeof rightSelector === 'string' ? rightSelector : null,
+      leftOffset: Number.isFinite(leftOffset) ? Number(leftOffset) : null,
+      rightOffset: Number.isFinite(rightOffset) ? Number(rightOffset) : null,
       anchorRelative: anchorRelative === true,
-      anchorVersion: anchorVersion === 3 ? 3 : anchorVersion === 2 ? 2 : 1,
+      anchorVersion: anchorVersion === 4 ? 4 : anchorVersion === 3 ? 3 : anchorVersion === 2 ? 2 : 1,
       x: Number(x) || 0,
       y: Number(y) || 0,
       width: Number(width) || 0,

@@ -84,6 +84,10 @@ model UiAnnotation {
   version     Version  @relation(fields: [versionId], references: [id], onDelete: Cascade)
   pagePath    String   @default("/")
   selector    String?
+  leftSelector String?
+  rightSelector String?
+  leftOffset Float?
+  rightOffset Float?
   anchorRelative Boolean @default(false)
   anchorVersion Int @default(1)
   x           Float

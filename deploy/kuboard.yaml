@@ -41,7 +41,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: html-publish
-          image: harbor.dgmed.cn/sjwj/html-publish:v0.1.15
+          image: harbor.dgmed.cn/sjwj/html-publish:v0.2.0
           imagePullPolicy: Always
           ports:
             - name: http
